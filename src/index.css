@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── AutosTandil Design System ─── */
+:root {
+  --at-page-bg: #f0f0ec;
+  --at-bg: #fafaf7;
+  --at-bg-2: #f1f1ed;
+  --at-surface: #ffffff;
+  --at-ink: #0f172a;
+  --at-ink-2: #475569;
+  --at-ink-3: #94a3b8;
+  --at-border: #ececea;
+  --at-border-strong: #d8d8d4;
+  --at-accent: #0044ff;
+  --at-accent-soft: rgba(0, 68, 255, 0.10);
+  --at-accent-soft-fg: #c7d4f5;
+  --at-accent-strong: #0033cc;
+  --at-radius-card: 14px;
+  --at-display: "Fraunces", Georgia, serif;
+  --at-sans: "Inter", -apple-system, system-ui, sans-serif;
+  --at-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+[data-theme="dark"] {
+  --at-page-bg: #0a0a0a;
+  --at-bg: #0f0f10;
+  --at-bg-2: #1a1a1c;
+  --at-surface: #18181b;
+  --at-ink: #f5f5f4;
+  --at-ink-2: #a8a8a3;
+  --at-ink-3: #6b6b66;
+  --at-border: #27272a;
+  --at-border-strong: #3f3f46;
+  --at-accent-soft: rgba(255,255,255,.06);
+  --at-accent-soft-fg: #93c5fd;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--at-page-bg);
+  font-family: var(--at-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--at-ink);
+}
+
+#root {
+  min-height: 100dvh;
+  background: var(--at-bg);
+}
+
+input, button, select, textarea { font-family: inherit; }
+
+/* Scrollbar hidden */
+.hide-scroll::-webkit-scrollbar { display: none; }
+.hide-scroll { scrollbar-width: none; }
+
+/* Skeleton shimmer */
+.skel {
+  background: linear-gradient(90deg, var(--at-bg-2) 0%, #fff 50%, var(--at-bg-2) 100%);
+  background-size: 200% 100%;
+  animation: skelShine 1.4s linear infinite;
+}
+[data-theme="dark"] .skel {
+  background: linear-gradient(90deg, #1f1f22 0%, #2a2a2d 50%, #1f1f22 100%);
+  background-size: 200% 100%;
+  animation: skelShine 1.4s linear infinite;
+}
+@keyframes skelShine {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Top progress shimmer */
+.topbar-shimmer {
+  animation: tbShimmer 1s linear infinite;
+  transform: translateX(-100%);
+}
+@keyframes tbShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Range sliders */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--at-border-strong);
+  border-radius: 999px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 999px;
+  background: var(--at-ink);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px;
+  border-radius: 999px;
+  background: var(--at-ink);
+  cursor: pointer;
+  border: none;
+}
+
+::selection { background: var(--at-accent); color: #fff; }

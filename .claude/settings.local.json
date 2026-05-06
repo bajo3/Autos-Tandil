@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Bash(mkdir -p /tmp/at-scaffold)",
+      "Read(//tmp/**)",
+      "Bash(npm install *)",
+      "Bash(npx tailwindcss *)",
+      "Bash(cp /tmp/autostandil-demo/logo-autostandil-mark.png \"/c/Users/felip/Desktop/Feli Web/Autostandil/public/\")",
+      "Bash(cp /tmp/autostandil-demo/logo-autostandil-trim.png \"/c/Users/felip/Desktop/Feli Web/Autostandil/public/\")",
+      "Bash(cp /tmp/autostandil-demo/logo-autostandil.png \"/c/Users/felip/Desktop/Feli Web/Autostandil/public/\")",
+      "Bash(npm run *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(netstat -ano)",
+      "Bash(tasklist /FI \"PID eq 46532\")"
+    ]
+  }
+}
