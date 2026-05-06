@@ -1,16 +1,35 @@
 const photo = (id, w = 1200) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=70`;
 
+const toImageArray = (value) => {
+  if (Array.isArray(value)) return value.map(item => String(item || '').trim()).filter(Boolean);
+  if (typeof value !== 'string') return [];
+
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) return parsed.map(item => String(item || '').trim()).filter(Boolean);
+  } catch {
+    // Some legacy rows may contain one plain URL instead of a JSON array.
+  }
+
+  return [trimmed];
+};
+
 const normalizePhotos = (row) => {
-  const photoUrls = Array.isArray(row.photo_urls)
-    ? row.photo_urls.filter(Boolean)
-    : Array.isArray(row.photos)
-      ? row.photos.map((p) => String(p).startsWith('http') ? p : photo(p))
-      : [];
+  const images = toImageArray(row.images);
+  const legacyUrls = toImageArray(row.photo_urls);
+  const mockPhotos = Array.isArray(row.photos)
+    ? row.photos.map((p) => String(p).startsWith('http') ? p : photo(p))
+    : [];
+  const photoUrls = images.length ? images : legacyUrls.length ? legacyUrls : mockPhotos;
 
   return {
+    images: photoUrls,
     photoUrls,
-    thumbUrl: row.thumb_url || photoUrls[0] || '/logo-autostandil.png',
+    thumbUrl: photoUrls[0] || row.thumb_url || '/logo-autostandil.png',
   };
 };
 
@@ -39,6 +58,7 @@ export function normalizeCar(row) {
 }
 
 export function carToRow(car) {
+  const images = toImageArray(car.images || car.photoUrls);
   return {
     id: car.id,
     brand: car.brand,
@@ -56,8 +76,7 @@ export function carToRow(car) {
     body: car.body,
     badges: car.badges || [],
     description: car.desc,
-    photo_urls: car.photoUrls || [],
-    thumb_url: car.thumbUrl || car.photoUrls?.[0] || null,
+    images,
     status: car.status || 'draft',
   };
 }

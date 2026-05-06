@@ -40,6 +40,8 @@ export default function App() {
         <Route path="/vender" element={<Vender />} />
         <Route path="/subastas" element={<Subastas />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/login" element={<Admin />} />
+        <Route path="/admin/autos" element={<Admin />} />
         <Route path="*" element={<Home favs={favs} onFav={toggle} recents={recents} cars={inventory.cars} />} />
       </Routes>
       {showNav && <BottomNav favCount={favs.length} />}

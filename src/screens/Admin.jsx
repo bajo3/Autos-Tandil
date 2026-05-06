@@ -4,6 +4,7 @@ import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { carToRow } from '../lib/carMapper';
 import { getAdminCredentials, isAdminSession, setAdminSession } from '../lib/adminAuth';
 import { fmtPrice, fmtKm } from '../lib/utils';
+import { ImageManager } from '../components/admin/ImageManager';
 
 const emptyCar = {
   id: '',
@@ -22,8 +23,7 @@ const emptyCar = {
   body: '',
   badges: [],
   desc: '',
-  photoUrls: [],
-  thumbUrl: '',
+  images: [],
   status: 'draft',
 };
 
@@ -67,6 +67,57 @@ const slugify = (parts) => parts
   .toLowerCase()
   .replace(/[^a-z0-9]+/g, '-')
   .replace(/(^-|-$)/g, '');
+
+const cleanImages = (images) => {
+  const seen = new Set();
+  return (images || [])
+    .map(image => String(image || '').trim())
+    .filter(Boolean)
+    .filter((image) => {
+      const key = image.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+};
+
+const formSectionStyle = {
+  border: '1px solid var(--at-border)',
+  background: 'var(--at-bg)',
+  borderRadius: 12,
+  padding: 14,
+  display: 'grid',
+  gap: 12,
+};
+
+function FormSection({ title, children }) {
+  return (
+    <section style={formSectionStyle}>
+      <h3 style={{ margin: 0, fontFamily: 'var(--at-display)', fontSize: 18, fontWeight: 700 }}>
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function TogglePill({ active, children, onClick }) {
+  return (
+    <button type="button" onClick={onClick} style={{
+      border: '1px solid ' + (active ? 'var(--at-ink)' : 'var(--at-border)'),
+      background: active ? 'var(--at-ink)' : 'var(--at-surface)',
+      color: active ? '#fff' : 'var(--at-ink)',
+      borderRadius: 999,
+      padding: '9px 12px',
+      fontSize: 12,
+      fontWeight: 800,
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+    }}>
+      {children}
+    </button>
+  );
+}
 
 function Login({ onLogin }) {
   const [user, setUser] = useState('');
@@ -113,37 +164,69 @@ function Login({ onLogin }) {
 }
 
 function CarForm({ value, onChange, onSubmit, saving, onCancel }) {
-  const badgesText = value.badges.join(', ');
-  const photosText = value.photoUrls.join('\n');
+  const badges = value.badges || [];
 
   const patch = (key, nextValue) => onChange({ ...value, [key]: nextValue });
   const patchNumber = (key, nextValue) => patch(key, Number(nextValue) || 0);
+  const toggleBadge = (badge) => {
+    patch('badges', badges.includes(badge) ? badges.filter(item => item !== badge) : [...badges, badge]);
+  };
 
   const submit = (event) => {
     event.preventDefault();
     const id = value.id || slugify([value.brand, value.model, value.year]);
-    const photoUrls = photosText.split('\n').map(v => v.trim()).filter(Boolean);
+    const images = cleanImages(value.images || value.photoUrls);
     onSubmit({
       ...value,
       id,
-      badges: badgesText.split(',').map(v => v.trim()).filter(Boolean),
-      photoUrls,
-      thumbUrl: value.thumbUrl || photoUrls[0] || '',
+      images,
+      photoUrls: images,
+      thumbUrl: images[0] || '',
     });
   };
 
   return (
     <form onSubmit={submit} style={{ display: 'grid', gap: 14 }}>
-      <div className="grid md:grid-cols-3" style={{ gap: 10 }}>
-        <label style={labelStyle}>ID<input style={fieldStyle} value={value.id} onChange={e => patch('id', e.target.value)} placeholder="se genera si queda vacio" /></label>
-        <label style={labelStyle}>Marca<input style={fieldStyle} required value={value.brand} onChange={e => patch('brand', e.target.value)} /></label>
-        <label style={labelStyle}>Modelo<input style={fieldStyle} required value={value.model} onChange={e => patch('model', e.target.value)} /></label>
-      </div>
-      <label style={labelStyle}>Version<input style={fieldStyle} value={value.version} onChange={e => patch('version', e.target.value)} /></label>
-      <div className="grid md:grid-cols-4" style={{ gap: 10 }}>
-        <label style={labelStyle}>Ano<input style={fieldStyle} type="number" required value={value.year} onChange={e => patchNumber('year', e.target.value)} /></label>
-        <label style={labelStyle}>Km<input style={fieldStyle} type="number" value={value.km} onChange={e => patchNumber('km', e.target.value)} /></label>
-        <label style={labelStyle}>Precio<input style={fieldStyle} type="number" value={value.price} onChange={e => patchNumber('price', e.target.value)} /></label>
+      <FormSection title="Datos principales">
+        <div className="grid md:grid-cols-3" style={{ gap: 10 }}>
+          <label style={labelStyle}>ID<input style={fieldStyle} value={value.id} onChange={e => patch('id', e.target.value)} placeholder="se genera si queda vacio" /></label>
+          <label style={labelStyle}>Marca<input style={fieldStyle} required value={value.brand} onChange={e => patch('brand', e.target.value)} /></label>
+          <label style={labelStyle}>Modelo<input style={fieldStyle} required value={value.model} onChange={e => patch('model', e.target.value)} /></label>
+        </div>
+        <label style={labelStyle}>Version<input style={fieldStyle} value={value.version} onChange={e => patch('version', e.target.value)} /></label>
+        <div className="grid md:grid-cols-4" style={{ gap: 10 }}>
+          <label style={labelStyle}>Ano<input style={fieldStyle} type="number" required value={value.year} onChange={e => patchNumber('year', e.target.value)} /></label>
+          <label style={labelStyle}>Km<input style={fieldStyle} type="number" value={value.km} onChange={e => patchNumber('km', e.target.value)} /></label>
+          <label style={labelStyle}>Precio<input style={fieldStyle} type="number" value={value.price} onChange={e => patchNumber('price', e.target.value)} /></label>
+          <label style={labelStyle}>Moneda<input style={fieldStyle} value={value.currency} onChange={e => patch('currency', e.target.value)} /></label>
+        </div>
+      </FormSection>
+
+      <FormSection title="Caracteristicas">
+        <div className="grid md:grid-cols-4" style={{ gap: 10 }}>
+          <label style={labelStyle}>Combustible<input style={fieldStyle} value={value.fuel} onChange={e => patch('fuel', e.target.value)} /></label>
+          <label style={labelStyle}>Transmision<input style={fieldStyle} value={value.trans} onChange={e => patch('trans', e.target.value)} /></label>
+          <label style={labelStyle}>Carroceria<input style={fieldStyle} value={value.body} onChange={e => patch('body', e.target.value)} /></label>
+          <label style={labelStyle}>Color<input style={fieldStyle} value={value.color} onChange={e => patch('color', e.target.value)} /></label>
+        </div>
+        <div className="grid md:grid-cols-2" style={{ gap: 10 }}>
+          <label style={labelStyle}>Tipo<input style={fieldStyle} value={value.type} onChange={e => patch('type', e.target.value)} /></label>
+          <label style={labelStyle}>Motor<input style={fieldStyle} value={value.engine} onChange={e => patch('engine', e.target.value)} /></label>
+        </div>
+      </FormSection>
+
+      <ImageManager
+        images={value.images || value.photoUrls || []}
+        onChange={(images) => onChange({ ...value, images, photoUrls: images, thumbUrl: images[0] || '' })}
+      />
+
+      <FormSection title="Publicacion">
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <TogglePill active={badges.includes('destacado')} onClick={() => toggleBadge('destacado')}>Destacado</TogglePill>
+          <TogglePill active={badges.includes('financia')} onClick={() => toggleBadge('financia')}>Financiacion</TogglePill>
+          <TogglePill active={badges.includes('permuta')} onClick={() => toggleBadge('permuta')}>Permuta</TogglePill>
+          <TogglePill active={badges.includes('nuevo')} onClick={() => toggleBadge('nuevo')}>Nuevo ingreso</TogglePill>
+        </div>
         <label style={labelStyle}>Estado
           <select style={fieldStyle} value={value.status} onChange={e => patch('status', e.target.value)}>
             <option value="draft">Borrador</option>
@@ -152,20 +235,12 @@ function CarForm({ value, onChange, onSubmit, saving, onCancel }) {
             <option value="sold">Vendido</option>
           </select>
         </label>
-      </div>
-      <div className="grid md:grid-cols-4" style={{ gap: 10 }}>
-        <label style={labelStyle}>Tipo<input style={fieldStyle} value={value.type} onChange={e => patch('type', e.target.value)} /></label>
-        <label style={labelStyle}>Combustible<input style={fieldStyle} value={value.fuel} onChange={e => patch('fuel', e.target.value)} /></label>
-        <label style={labelStyle}>Transmision<input style={fieldStyle} value={value.trans} onChange={e => patch('trans', e.target.value)} /></label>
-        <label style={labelStyle}>Color<input style={fieldStyle} value={value.color} onChange={e => patch('color', e.target.value)} /></label>
-      </div>
-      <div className="grid md:grid-cols-2" style={{ gap: 10 }}>
-        <label style={labelStyle}>Motor<input style={fieldStyle} value={value.engine} onChange={e => patch('engine', e.target.value)} /></label>
-        <label style={labelStyle}>Carroceria<input style={fieldStyle} value={value.body} onChange={e => patch('body', e.target.value)} /></label>
-      </div>
-      <label style={labelStyle}>Badges<input style={fieldStyle} value={badgesText} onChange={e => patch('badges', e.target.value.split(',').map(v => v.trim()).filter(Boolean))} placeholder="destacado, financia, permuta" /></label>
-      <label style={labelStyle}>Descripcion<textarea style={{ ...fieldStyle, minHeight: 88, resize: 'vertical' }} value={value.desc} onChange={e => patch('desc', e.target.value)} /></label>
-      <label style={labelStyle}>Fotos, una URL por linea<textarea style={{ ...fieldStyle, minHeight: 96, resize: 'vertical' }} value={photosText} onChange={e => patch('photoUrls', e.target.value.split('\n').map(v => v.trim()).filter(Boolean))} /></label>
+      </FormSection>
+
+      <FormSection title="Descripcion">
+        <label style={labelStyle}>Descripcion comercial<textarea style={{ ...fieldStyle, minHeight: 108, resize: 'vertical' }} value={value.desc} onChange={e => patch('desc', e.target.value)} /></label>
+      </FormSection>
+
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <button type="button" onClick={onCancel} style={{ ...buttonStyle, background: 'var(--at-bg-2)', color: 'var(--at-ink)' }}>Limpiar</button>
         <button disabled={saving || !hasSupabaseConfig} style={{ ...buttonStyle, background: 'var(--at-ink)', color: '#fff', opacity: saving || !hasSupabaseConfig ? .55 : 1 }}>
@@ -259,23 +334,60 @@ export default function Admin() {
           {loading ? <div style={{ color: 'var(--at-ink-2)' }}>Cargando stock...</div> : sortedCars.map(car => (
             <article key={car.id} style={{
               display: 'grid',
-              gridTemplateColumns: '88px 1fr',
+              gridTemplateColumns: '96px 1fr',
               gap: 12,
               background: 'var(--at-surface)',
               border: '1px solid var(--at-border)',
               borderRadius: 10,
               padding: 10,
             }}>
-              <img src={car.thumbUrl} alt="" style={{ width: 88, aspectRatio: '4/3', objectFit: 'cover', borderRadius: 8, background: 'var(--at-bg-2)' }} />
+              <div style={{ position: 'relative', width: 96, aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden', background: 'var(--at-bg-2)' }}>
+                {car.thumbUrl ? (
+                  <img src={car.thumbUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                ) : (
+                  <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--at-ink-3)', fontSize: 11, textAlign: 'center', padding: 8 }}>
+                    Sin foto
+                  </div>
+                )}
+                <span style={{
+                  position: 'absolute',
+                  right: 6,
+                  bottom: 6,
+                  borderRadius: 999,
+                  padding: '3px 6px',
+                  background: 'rgba(255,255,255,.92)',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  color: 'var(--at-ink)',
+                }}>
+                  {(car.images || car.photoUrls || []).length} fotos
+                </span>
+              </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                   <div>
                     <strong style={{ fontFamily: 'var(--at-display)', fontSize: 16 }}>{car.brand} {car.model}</strong>
                     <div style={{ color: 'var(--at-ink-2)', fontSize: 12, marginTop: 2 }}>{car.version}</div>
                     <div style={{ color: 'var(--at-ink-3)', fontSize: 11, marginTop: 4 }}>{car.year} / {fmtKm(car.km)} / {fmtPrice(car.price)} / {car.status}</div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      {['destacado', 'financia', 'permuta'].map(badge => car.badges?.includes(badge) && (
+                        <span key={badge} style={{
+                          borderRadius: 999,
+                          padding: '3px 7px',
+                          background: 'var(--at-bg-2)',
+                          color: 'var(--at-ink-2)',
+                          fontSize: 10,
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                        }}>
+                          {badge}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                     <button style={{ ...buttonStyle, background: 'var(--at-bg-2)', color: 'var(--at-ink)' }} onClick={() => setEditing(car)}>Editar</button>
+                    <a href={`/auto/${car.id}`} style={{ ...buttonStyle, background: 'var(--at-bg-2)', color: 'var(--at-ink)', textDecoration: 'none', display: 'inline-flex' }}>Ver</a>
                     <button style={{ ...buttonStyle, background: '#dcfce7', color: '#166534' }} onClick={() => changeStatus(car, 'published')}>Publicar</button>
                     <button style={{ ...buttonStyle, background: '#fef3c7', color: '#92400e' }} onClick={() => changeStatus(car, 'reserved')}>Reservar</button>
                     <button style={{ ...buttonStyle, background: '#e5e7eb', color: '#374151' }} onClick={() => changeStatus(car, 'sold')}>Vendido</button>
