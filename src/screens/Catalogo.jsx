@@ -192,7 +192,7 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false, 
               </select>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" style={{ padding: '12px 14px 24px' }}>
+            <div data-testid="catalog-grid" className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" style={{ padding: '12px 14px 24px' }}>
               {loading || loadingCars ? (
                 [1,2,3,4,5,6].map(i => <SkeletonCard key={i} />)
               ) : filtered.length === 0 ? (

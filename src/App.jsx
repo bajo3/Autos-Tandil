@@ -16,6 +16,16 @@ import Admin from './screens/Admin';
 
 const NAV_ROUTES = ['/', '/catalogo', '/favoritos', '/subastas'];
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [pathname]);
+
+  return null;
+}
+
 function DetalleWrapper({ favs, onFav, pushRecent, cars }) {
   const { id } = useParams();
   useEffect(() => { if (id) pushRecent(id); }, [id, pushRecent]);
@@ -31,6 +41,7 @@ export default function App() {
 
   return (
     <>
+      <ScrollToTop />
       <DesktopNav favCount={favs.length} />
       <Routes>
         <Route path="/" element={<Home favs={favs} onFav={toggle} recents={recents} cars={inventory.cars} />} />

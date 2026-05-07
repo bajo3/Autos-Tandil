@@ -12,9 +12,26 @@ Web publica y panel admin MVP para una agencia local de autos en consignacion.
 
 ## Admin
 
-El panel usa un gestor visual de fotos por URL con previews, portada, reordenamiento y eliminacion puntual del array.
+El panel usa un gestor visual de fotos con previews, portada, reordenamiento y eliminacion puntual del array. Soporta:
 
-Upload real a Supabase Storage queda como proximo paso recomendado. Bucket sugerido: `autos-images`. Para habilitarlo hay que crear el bucket, definir politicas de escritura/lectura y conectar un input file multiple al gestor de imagenes.
+- Carga por URL individual.
+- Carga por lote de URLs.
+- Upload multiple desde la computadora a Supabase Storage.
+
+El upload usa el bucket `autos-images` y guarda las public URLs resultantes en `images`. Para habilitarlo:
+
+1. Crear un bucket de Storage llamado `autos-images`.
+2. Hacerlo publico o configurar una estrategia de lectura compatible con URLs publicas.
+3. Agregar policies para permitir `insert` desde el rol que use el admin temporal.
+4. Configurar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
+
+Se puede verificar el bucket con:
+
+```bash
+npm run supabase:check-storage
+```
+
+Limitacion actual: al quitar una imagen desde el admin solo se elimina del array `images`; no se borra el archivo del bucket.
 
 ## Scripts
 
@@ -22,6 +39,7 @@ Upload real a Supabase Storage queda como proximo paso recomendado. Bucket suger
 - `npm run lint`
 - `npm run build`
 - `npm run supabase:setup`
+- `npm run supabase:check-storage`
 
 `npm run supabase:setup` usa `DATABASE_URL` solo desde entorno local/script. No debe exponerse en el frontend.
 

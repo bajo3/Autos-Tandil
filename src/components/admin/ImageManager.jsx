@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
+import { hasSupabaseConfig, supabase } from '../../lib/supabase';
 
 const urlPattern = /^https?:\/\/\S+\.\S+/i;
+const storageBucket = 'autos-images';
 
 const cleanImages = (items) => {
   const seen = new Set();
@@ -62,11 +64,18 @@ const ghostButton = {
   color: 'var(--at-ink)',
 };
 
+const safeFileName = (name) => name
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9.]+/g, '-')
+  .replace(/(^-|-$)/g, '');
+
 function ImageCard({ url, index, count, broken, onBroken, onSetCover, onMove, onRemove }) {
   const isCover = index === 0;
 
   return (
-    <article style={{
+    <article data-testid="image-card" style={{
       border: '1px solid var(--at-border)',
       borderRadius: 10,
       overflow: 'hidden',
@@ -136,7 +145,7 @@ function ImageCard({ url, index, count, broken, onBroken, onSetCover, onMove, on
           {url}
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <button type="button" style={ghostButton} onClick={onSetCover} disabled={isCover}>
+          <button type="button" data-testid="image-set-cover" style={ghostButton} onClick={onSetCover} disabled={isCover}>
             Portada
           </button>
           <button type="button" style={ghostButton} onClick={() => onMove(-1)} disabled={index === 0}>
@@ -145,7 +154,7 @@ function ImageCard({ url, index, count, broken, onBroken, onSetCover, onMove, on
           <button type="button" style={ghostButton} onClick={() => onMove(1)} disabled={index === count - 1}>
             Mover abajo
           </button>
-          <button type="button" style={{ ...ghostButton, background: '#fee2e2', color: '#991b1b' }} onClick={onRemove}>
+          <button type="button" data-testid="image-delete" style={{ ...ghostButton, background: '#fee2e2', color: '#991b1b' }} onClick={onRemove}>
             Eliminar
           </button>
         </div>
@@ -159,6 +168,8 @@ export function ImageManager({ images, onChange }) {
   const [singleUrl, setSingleUrl] = useState('');
   const [bulkUrls, setBulkUrls] = useState('');
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
   const [brokenImages, setBrokenImages] = useState({});
 
   const commit = (nextImages) => {
@@ -216,8 +227,56 @@ export function ImageManager({ images, onChange }) {
     commit([cover, ...nextImages]);
   };
 
+  const uploadFiles = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length) return;
+
+    if (!hasSupabaseConfig || !supabase) {
+      setError('Supabase no esta configurado. Carga URLs o configura VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.');
+      return;
+    }
+
+    const invalid = files.find(file => !file.type.startsWith('image/'));
+    if (invalid) {
+      setError(`El archivo ${invalid.name} no es una imagen valida.`);
+      return;
+    }
+
+    setUploading(true);
+    setError('');
+    const uploadedUrls = [];
+
+    for (let index = 0; index < files.length; index += 1) {
+      const file = files[index];
+      setUploadStatus(`Subiendo ${index + 1} de ${files.length}: ${file.name}`);
+      const path = `autos/${Date.now()}-${index}-${safeFileName(file.name)}`;
+      const { error: uploadError } = await supabase.storage
+        .from(storageBucket)
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type,
+        });
+
+      if (uploadError) {
+        setError(`No se pudo subir ${file.name}: ${uploadError.message}`);
+        setUploading(false);
+        setUploadStatus('');
+        return;
+      }
+
+      const { data } = supabase.storage.from(storageBucket).getPublicUrl(path);
+      if (data?.publicUrl) uploadedUrls.push(data.publicUrl);
+    }
+
+    commit([...cleanValue, ...uploadedUrls]);
+    setUploading(false);
+    setUploadStatus(uploadedUrls.length ? `${uploadedUrls.length} imagenes subidas.` : '');
+  };
+
   return (
-    <section style={panel}>
+    <section data-testid="image-manager" style={panel}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h3 style={{ margin: 0, fontFamily: 'var(--at-display)', fontSize: 18, fontWeight: 700 }}>
@@ -245,6 +304,42 @@ export function ImageManager({ images, onChange }) {
           {error}
         </div>
       )}
+
+      <div style={{
+        marginTop: 14,
+        border: '1px dashed var(--at-border-strong)',
+        borderRadius: 12,
+        background: 'var(--at-surface)',
+        padding: 14,
+        display: 'grid',
+        gap: 8,
+      }}>
+        <label style={{ display: 'grid', gap: 6, fontSize: 11, color: 'var(--at-ink-3)', fontFamily: 'var(--at-mono)', textTransform: 'uppercase', letterSpacing: '.1em' }}>
+          Subir desde la computadora
+          <input
+            data-testid="image-upload-files"
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={uploadFiles}
+            disabled={uploading}
+            style={inputStyle}
+          />
+        </label>
+        <div style={{ fontSize: 12, color: 'var(--at-ink-2)', lineHeight: 1.45 }}>
+          Usa el bucket Supabase Storage <strong>{storageBucket}</strong>. Al quitar una foto aca solo se elimina del listado del auto, no del bucket.
+        </div>
+        {!hasSupabaseConfig && (
+          <div style={{ fontSize: 12, color: '#92400e', background: '#fef3c7', borderRadius: 8, padding: '8px 10px' }}>
+            Upload deshabilitado hasta configurar Supabase en variables de entorno.
+          </div>
+        )}
+        {(uploading || uploadStatus) && (
+          <div data-testid="image-upload-status" style={{ fontSize: 12, color: uploading ? 'var(--at-ink)' : '#166534', fontWeight: 700 }}>
+            {uploadStatus || 'Subiendo imagenes...'}
+          </div>
+        )}
+      </div>
 
       {cleanValue.length ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3" style={{ gap: 10, marginTop: 14 }}>
@@ -290,6 +385,7 @@ export function ImageManager({ images, onChange }) {
         <label style={{ display: 'grid', gap: 6, fontSize: 11, color: 'var(--at-ink-3)', fontFamily: 'var(--at-mono)', textTransform: 'uppercase', letterSpacing: '.1em' }}>
           Agregar imagen por URL
           <input
+            data-testid="image-add-url"
             style={inputStyle}
             value={singleUrl}
             onChange={event => setSingleUrl(event.target.value)}
@@ -307,6 +403,7 @@ export function ImageManager({ images, onChange }) {
         </summary>
         <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
           <textarea
+            data-testid="image-add-many"
             style={{ ...inputStyle, minHeight: 88, resize: 'vertical' }}
             value={bulkUrls}
             onChange={event => setBulkUrls(event.target.value)}

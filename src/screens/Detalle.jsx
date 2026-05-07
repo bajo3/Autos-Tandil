@@ -212,7 +212,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
           }}>
             <IconHeart size={20} sw={1.8} filled={isFav} stroke={isFav ? '#e11d48' : 'var(--at-ink)'} />
           </button>
-          <a href={buildWhatsapp(car)} target="_blank" rel="noopener noreferrer"
+          <a data-testid="whatsapp-cta" href={buildWhatsapp(car)} target="_blank" rel="noopener noreferrer"
             style={{
               flex: 1, height: 52, borderRadius: 12,
               background: '#25D366', color: '#fff',
@@ -270,7 +270,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
           }}>
             <IconHeart size={20} sw={1.8} filled={isFav} stroke={isFav ? '#e11d48' : 'var(--at-ink)'} />
           </button>
-          <a href={buildWhatsapp(car)} target="_blank" rel="noopener noreferrer"
+          <a data-testid="whatsapp-cta" href={buildWhatsapp(car)} target="_blank" rel="noopener noreferrer"
             style={{
               flex: 1, height: 48, borderRadius: 12,
               background: '#25D366', color: '#fff',

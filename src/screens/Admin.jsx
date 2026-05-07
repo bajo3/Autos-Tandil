@@ -137,7 +137,7 @@ function Login({ onLogin }) {
 
   return (
     <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 20 }}>
-      <form onSubmit={submit} style={{
+      <form data-testid="admin-login-form" onSubmit={submit} style={{
         width: '100%',
         maxWidth: 360,
         background: 'var(--at-surface)',
@@ -153,8 +153,8 @@ function Login({ onLogin }) {
           Acceso temporal para gestionar stock. No reemplaza autenticacion real de produccion.
         </p>
         <div style={{ display: 'grid', gap: 12 }}>
-          <label style={labelStyle}>Usuario<input style={fieldStyle} value={user} onChange={e => setUser(e.target.value)} /></label>
-          <label style={labelStyle}>Clave<input style={fieldStyle} type="password" value={password} onChange={e => setPassword(e.target.value)} /></label>
+          <label style={labelStyle}>Usuario<input name="user" style={fieldStyle} value={user} onChange={e => setUser(e.target.value)} /></label>
+          <label style={labelStyle}>Clave<input name="password" style={fieldStyle} type="password" value={password} onChange={e => setPassword(e.target.value)} /></label>
           {error && <div style={{ color: '#b91c1c', fontSize: 12 }}>{error}</div>}
           <button style={{ ...buttonStyle, background: 'var(--at-ink)', color: '#fff' }}>Entrar</button>
         </div>
@@ -186,7 +186,7 @@ function CarForm({ value, onChange, onSubmit, saving, onCancel }) {
   };
 
   return (
-    <form onSubmit={submit} style={{ display: 'grid', gap: 14 }}>
+    <form data-testid="admin-car-form" onSubmit={submit} style={{ display: 'grid', gap: 14 }}>
       <FormSection title="Datos principales">
         <div className="grid md:grid-cols-3" style={{ gap: 10 }}>
           <label style={labelStyle}>ID<input style={fieldStyle} value={value.id} onChange={e => patch('id', e.target.value)} placeholder="se genera si queda vacio" /></label>
@@ -330,7 +330,7 @@ export default function Admin() {
           <CarForm value={editing} onChange={setEditing} onSubmit={saveCar} saving={saving} onCancel={() => setEditing(emptyCar)} />
         </section>
 
-        <section style={{ display: 'grid', gap: 10 }}>
+        <section data-testid="admin-cars-list" style={{ display: 'grid', gap: 10 }}>
           {loading ? <div style={{ color: 'var(--at-ink-2)' }}>Cargando stock...</div> : sortedCars.map(car => (
             <article key={car.id} style={{
               display: 'grid',

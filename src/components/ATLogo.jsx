@@ -2,6 +2,7 @@ export function ATLogo({ size = 28, color = 'currentColor', dark = false, full =
   if (full) {
     return (
       <img src="/logo-autostandil-trim.png" alt="AutosTandil"
+        data-testid="app-logo"
         style={{
           height: size * 1.6, width: 'auto', display: 'block',
           filter: dark ? 'brightness(0) invert(1)' : 'none',
@@ -9,7 +10,7 @@ export function ATLogo({ size = 28, color = 'currentColor', dark = false, full =
     );
   }
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: size * 0.36 }}>
+    <div data-testid="app-logo" style={{ display: 'inline-flex', alignItems: 'center', gap: size * 0.36 }}>
       <img src="/logo-autostandil-mark.png" alt=""
         style={{
           height: size, width: 'auto', display: 'block', flexShrink: 0,

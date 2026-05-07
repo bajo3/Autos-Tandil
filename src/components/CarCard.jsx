@@ -11,6 +11,7 @@ const specStyle = {
 export function CarCard({ car, onOpen, onFav, isFav, radius = 14 }) {
   return (
     <article
+      data-testid="car-card"
       onClick={onOpen}
       style={{
         background: 'var(--at-surface)',
