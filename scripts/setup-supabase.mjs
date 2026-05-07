@@ -28,6 +28,7 @@ create table if not exists public.autos (
   body text not null default '',
   badges text[] not null default '{}',
   description text not null default '',
+  images jsonb not null default '[]'::jsonb,
   photo_urls text[] not null default '{}',
   thumb_url text,
   status text not null default 'draft' check (status in ('draft', 'published', 'reserved', 'sold')),
@@ -50,6 +51,7 @@ alter table public.autos add column if not exists type text not null default 'Au
 alter table public.autos add column if not exists body text not null default '';
 alter table public.autos add column if not exists badges text[] not null default '{}';
 alter table public.autos add column if not exists description text not null default '';
+alter table public.autos add column if not exists images jsonb not null default '[]'::jsonb;
 alter table public.autos add column if not exists photo_urls text[] not null default '{}';
 alter table public.autos add column if not exists thumb_url text;
 alter table public.autos add column if not exists status text not null default 'draft';
@@ -65,10 +67,10 @@ create index if not exists autos_created_at_idx on public.autos (created_at desc
 const seedSql = `
 insert into public.autos (
   id, brand, model, version, year, km, price, currency, fuel, trans, engine,
-  color, type, body, badges, description, photo_urls, thumb_url, status
+  color, type, body, badges, description, images, status
 ) values (
   $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-  $12, $13, $14, $15, $16, $17, $18, 'published'
+  $12, $13, $14, $15, $16, $17::jsonb, 'published'
 )
 on conflict (id) do nothing;
 `;
@@ -87,7 +89,7 @@ try {
     const result = await client.query(seedSql, [
       car.id, car.brand, car.model, car.version, car.year, car.km, car.price,
       car.currency, car.fuel, car.trans, car.engine, car.color, car.type,
-      car.body, car.badges, car.desc, car.photoUrls, car.thumbUrl,
+      car.body, car.badges, car.desc, JSON.stringify(car.images || []),
     ]);
     inserted += result.rowCount;
   }

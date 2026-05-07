@@ -1,6 +1,101 @@
 const photo = (id, w = 1200) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=70`;
 
+// Curated demo images by exact or very close brand/model. Query pattern used:
+// `${brand} ${model}`, `${brand} ${model} ${year}`, then `${brand} ${model} ${version}` only when useful.
+const CAR_IMAGES = {
+  'vw-amarok-2022': [
+    'https://upload.wikimedia.org/wikipedia/commons/3/3a/2021_Volkswagen_Amarok_Extreme.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/e/ec/Volkswagen_V6_Amarok%2C_Pferdeanh%C3%A4nger%2C_Polizeipalast%2C_2022_Budapest.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/b/bd/Volkswagen_Amarok_%28Jamaica%29.jpg',
+  ],
+  'toyota-hilux-2021': [
+    'https://upload.wikimedia.org/wikipedia/commons/8/81/Toyota_HiLux_GR_Sport_1X7A7281.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/e/ec/A_Toyota_Hilux_pickup_truck_with_a_snowplow_01.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/5/53/A_Toyota_Hilux_pickup_truck_with_a_snowplow_02.jpg',
+  ],
+  'ford-ranger-2020': [
+    'https://upload.wikimedia.org/wikipedia/commons/c/c1/2020_Ford_Ranger_Wildtrak_second_facelift_front.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/1/16/2020_Ford_Ranger_Wildtrak_second_facelift_rear.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/d/de/2020_Ford_Ranger_Raptor_Front.jpg',
+  ],
+  'vw-golf-2019': [
+    'https://upload.wikimedia.org/wikipedia/commons/0/0b/2019_Volkswagen_Golf_VII.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/9/92/2019_Volkswagen_Golf_VII_-2.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/b/b1/2019_Volkswagen_Golf_GTI_TCR_BS_O24.jpg',
+  ],
+  'toyota-corolla-2023': [
+    'https://upload.wikimedia.org/wikipedia/commons/6/67/2023_Toyota_Corolla_Touring_Sports_Hybrid_%28E210%29_IMG_7679.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/5/58/2023_Toyota_Corolla_Touring_Sports_Hybrid_%28E210%29_IMG_8123.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/3/3f/Toyota_Corolla_Cross_Hybrid_1X7A6284.jpg',
+  ],
+  'peugeot-208-2022': [
+    'https://upload.wikimedia.org/wikipedia/commons/b/b0/Peugeot_208_%282022%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/c/ce/Peugeot_208_1.6_Active_2022.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/7/78/2022_Peugeot_208_1.6_Active.jpg',
+  ],
+  'renault-duster-2021': [
+    'https://upload.wikimedia.org/wikipedia/commons/6/69/Renault_Duster_Tandil.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/b/bf/Renault_Duster_2020_%28Russia%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/9/9f/Renault_Duster_%2851658579574%29.jpg',
+  ],
+  'fiat-cronos-2023': [
+    'https://upload.wikimedia.org/wikipedia/commons/d/da/2023_Fiat_Cronos_1.3_Drive_%28Argentina%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/f/f7/Fiat_Cronos_1.3_GSE_Like_2023_-_1-2.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/f/ff/Fiat_Cronos_1.3_GSE_Like_2023_-_2-2.jpg',
+  ],
+  'chevrolet-tracker-2022': [
+    'https://upload.wikimedia.org/wikipedia/commons/6/66/2022_Chevrolet_Tracker_1.2_Turbo_LTZ%2C_front_%28Argentina%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/1/1d/2022_Chevrolet_Tracker_1.2_Turbo_LTZ%2C_rear_%28Argentina%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/3/33/2022_Chevrolet_Tracker_1.2_Turbo_LS.jpg',
+  ],
+  'nissan-frontier-2021': [
+    'https://upload.wikimedia.org/wikipedia/commons/6/65/2021_Nissan_NP300_Frontier_Crew_Cab.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/8/8b/2021_Nissan_Frontier_Pro_4X_%28Colombia%3B_facelift%29_rear_view.png',
+    'https://upload.wikimedia.org/wikipedia/commons/b/b0/2021_Nissan_Frontier_Buenos_Aires_City_Police_truck.jpg',
+  ],
+  'vw-tcross-2022': [
+    'https://upload.wikimedia.org/wikipedia/commons/7/7d/Volkswagen_T-Cross_CN_Shishi_01_2022-03-13.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/7/76/Volkswagen_T-Cross_CN_Shishi_02_2022-03-13.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/e/eb/Volkswagen_T-Cross_1X7A0363.jpg',
+  ],
+  'ford-ecosport-2020': [
+    'https://upload.wikimedia.org/wikipedia/commons/6/60/Ford_EcoSport_1.0T_Titanium_%282020%29_%2852720616241%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/9/91/18-20_Ford_EcoSport_SE_AWD_03-26-2020_Rear.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/7/7f/2018_Ford_EcoSport_SE_4WD%2C_Front_Right%2C_09-25-2020.jpg',
+  ],
+  'fiat-toro-2021': [
+    'https://upload.wikimedia.org/wikipedia/commons/9/9c/2022_Fiat_Toro_2.0_Multijet_Volcano.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/1/1c/2020_Fiat_Toro_Ultra.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/8/84/Fiat_Toro_Volcano_front.jpg',
+  ],
+  'toyota-yaris-2022': [
+    'https://upload.wikimedia.org/wikipedia/commons/d/d8/Toyota_Yaris_Hybrid_GR_Sport_%28XP210%29_Automesse_Ludwigsburg_2022_1X7A5891.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/f/fa/Toyota_Yaris_Hybrid_GR_Sport_%28XP210%29_Automesse_Ludwigsburg_2022_1X7A5892.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/3/36/Toyota_GR_Yaris_RZ_1X7A0252.jpg',
+  ],
+  'chevrolet-cruze-2020': [
+    'https://upload.wikimedia.org/wikipedia/commons/7/71/2020_Chevrolet_Cruze_1.4T_Premier_AT_%28front%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/e/e4/2020_Chevrolet_Cruze_1.4T_Premier_AT_%28rear%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/d/d7/Chevrolet_Cruze_LTZ_2020_de_Carburando_%282%29.jpg',
+  ],
+  'peugeot-3008-2021': [
+    'https://upload.wikimedia.org/wikipedia/commons/6/67/2021_Peugeot_3008_B_1X7A0344.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/5/58/2021_Peugeot_3008_B_Hybrid4_1X7A0141.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/0/09/2021_Peugeot_3008_B_1X7A6965.jpg',
+  ],
+  'renault-kangoo-2022': [
+    'https://upload.wikimedia.org/wikipedia/commons/7/71/Renault_Kangoo_III_Automesse_Ludwigsburg_2022_1X7A5952.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/c/c9/Renault_Kangoo_III_Rapid_E-Tech_1X7A6132.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/e/e0/Renault_Kangoo_III_Rapid_E-Tech_1X7A6133.jpg',
+  ],
+  'ford-fiesta-2018': [
+    'https://upload.wikimedia.org/wikipedia/commons/5/5c/Ford_Fiesta_2018.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/1/1b/Ford_Fiesta_2018_S_Plus_1.6_in_Montevideo_%28front%29.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/8/88/2018_Ford_Fiesta_SE_hatchback%2C_front_right%2C_09-28-2024.jpg',
+  ],
+};
+
 export const CARS = [
   {
     id: 'vw-amarok-2022',
@@ -185,8 +280,10 @@ export const CARS = [
 ];
 
 CARS.forEach(car => {
-  car.photoUrls = car.photos.map(p => photo(p));
-  car.thumbUrl = photo(car.photos[0], 800);
+  const curatedImages = CAR_IMAGES[car.id];
+  car.images = curatedImages || car.photos.map(p => photo(p));
+  car.photoUrls = car.images;
+  car.thumbUrl = car.images[0] || '/logo-autostandil.png';
 });
 
 export const BRANDS = [...new Set(CARS.map(c => c.brand))].sort();

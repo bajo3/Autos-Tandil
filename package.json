@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "supabase:setup": "node scripts/setup-supabase.mjs"
+    "supabase:setup": "node scripts/setup-supabase.mjs",
+    "supabase:enrich-images": "node scripts/enrich-car-images.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.3",
