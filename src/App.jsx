@@ -13,6 +13,7 @@ import Favoritos from './screens/Favoritos';
 import Vender from './screens/Vender';
 import Subastas from './screens/Subastas';
 import Admin from './screens/Admin';
+import { trackPageView } from './services/analyticsService';
 
 const NAV_ROUTES = ['/', '/catalogo', '/favoritos', '/subastas'];
 
@@ -21,6 +22,20 @@ function ScrollToTop() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [pathname]);
+
+  return null;
+}
+
+function AnalyticsTracker() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const pageType = pathname.startsWith('/auto/') ? 'car_detail'
+      : pathname.startsWith('/admin') ? 'admin'
+        : pathname === '/' ? 'home'
+          : pathname.split('/')[1] || 'page';
+    trackPageView(pathname, pageType);
   }, [pathname]);
 
   return null;
@@ -42,6 +57,7 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      <AnalyticsTracker />
       <DesktopNav favCount={favs.length} />
       <Routes>
         <Route path="/" element={<Home favs={favs} onFav={toggle} recents={recents} cars={inventory.cars} />} />
@@ -53,6 +69,9 @@ export default function App() {
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin/login" element={<Admin />} />
         <Route path="/admin/autos" element={<Admin />} />
+        <Route path="/admin/autos/nuevo" element={<Admin />} />
+        <Route path="/admin/autos/:id/editar" element={<Admin />} />
+        <Route path="/admin/analytics" element={<Admin />} />
         <Route path="*" element={<Home favs={favs} onFav={toggle} recents={recents} cars={inventory.cars} />} />
       </Routes>
       {showNav && <BottomNav favCount={favs.length} />}

@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/static-components */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CARS as MOCK_CARS } from '../data/cars';
 import { buildWhatsapp, fmtPrice, fmtKm } from '../lib/utils';
@@ -12,6 +12,7 @@ import {
   IconHeart, IconWhatsapp, IconBack,
   IconGauge, IconCalendar, IconFuel, IconGear, IconCalc, IconLocation,
 } from '../components/Icons';
+import { trackCarView, trackWhatsappClick } from '../services/analyticsService';
 
 export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
   const { id } = useParams();
@@ -19,6 +20,10 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
   const car = cars.find(c => c.id === id);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [showCalc, setShowCalc] = useState(false);
+
+  useEffect(() => {
+    if (car) trackCarView(car);
+  }, [car]);
 
   if (!car) {
     return (
@@ -212,7 +217,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
           }}>
             <IconHeart size={20} sw={1.8} filled={isFav} stroke={isFav ? '#e11d48' : 'var(--at-ink)'} />
           </button>
-          <a data-testid="whatsapp-cta" href={buildWhatsapp(car)} target="_blank" rel="noopener noreferrer"
+          <a data-testid="whatsapp-cta" href={buildWhatsapp(car)} onClick={() => trackWhatsappClick(car, 'detail_desktop')} target="_blank" rel="noopener noreferrer"
             style={{
               flex: 1, height: 52, borderRadius: 12,
               background: '#25D366', color: '#fff',
@@ -270,7 +275,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
           }}>
             <IconHeart size={20} sw={1.8} filled={isFav} stroke={isFav ? '#e11d48' : 'var(--at-ink)'} />
           </button>
-          <a data-testid="whatsapp-cta" href={buildWhatsapp(car)} target="_blank" rel="noopener noreferrer"
+          <a data-testid="whatsapp-cta" href={buildWhatsapp(car)} onClick={() => trackWhatsappClick(car, 'detail_mobile')} target="_blank" rel="noopener noreferrer"
             style={{
               flex: 1, height: 48, borderRadius: 12,
               background: '#25D366', color: '#fff',

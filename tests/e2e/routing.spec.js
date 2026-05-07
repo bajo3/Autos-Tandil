@@ -14,7 +14,7 @@ test('vercel.json contains SPA rewrite', async () => {
 });
 
 test.describe('direct SPA routes', () => {
-  for (const route of ['/admin', '/admin/login', '/catalogo', '/favoritos', '/vender']) {
+  for (const route of ['/admin', '/admin/login', '/admin/autos', '/admin/autos/nuevo', '/admin/analytics', '/catalogo', '/favoritos', '/vender']) {
     test(`${route} is handled by the app`, async ({ page }) => {
       await page.goto(route);
       await expect(page.locator('body')).not.toContainText('404: NOT_FOUND');

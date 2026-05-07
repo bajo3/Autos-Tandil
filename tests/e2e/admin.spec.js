@@ -9,14 +9,26 @@ test.describe('admin', () => {
     await page.locator('input[name="user"]').fill('admin');
     await page.locator('input[name="password"]').fill('admin');
     await page.getByRole('button', { name: /entrar/i }).click();
-    await expect(page.getByTestId('admin-car-form')).toBeVisible();
+    await expect(page.getByTestId('admin-dashboard')).toBeVisible();
+    await expect(page.getByTestId('admin-car-form')).toHaveCount(0);
 
     await page.getByRole('button', { name: /salir/i }).click();
     await expect(page.getByTestId('admin-login-form')).toBeVisible();
   });
 
+  test('dashboard add button opens new car form', async ({ page }) => {
+    await loginAdmin(page);
+
+    await expect(page.getByTestId('admin-dashboard')).toBeVisible();
+    await expect(page.getByTestId('admin-car-form')).toHaveCount(0);
+    await page.getByTestId('admin-add-car').click();
+    await expect(page).toHaveURL(/\/admin\/autos\/nuevo$/);
+    await expect(page.getByTestId('admin-car-form')).toBeVisible();
+  });
+
   test('ImageManager adds, promotes and deletes image URLs without Supabase writes', async ({ page }) => {
     await loginAdmin(page);
+    await page.goto('/admin/autos/nuevo');
 
     const manager = page.getByTestId('image-manager');
     await expect(manager).toBeVisible();
@@ -58,8 +70,17 @@ test.describe('admin', () => {
 
   test('admin list renders fallback cars or Supabase cars', async ({ page }) => {
     await loginAdmin(page);
+    await page.goto('/admin/autos');
 
     await expect(page.getByTestId('admin-cars-list')).toBeVisible();
-    await expect(page.getByText(/Stock AutosTandil/i)).toBeVisible();
+    await expect(page.getByText(/Autos publicados/i)).toBeVisible();
+  });
+
+  test('admin analytics route loads', async ({ page }) => {
+    await loginAdmin(page);
+    await page.goto('/admin/analytics');
+
+    await expect(page.getByTestId('admin-analytics')).toBeVisible();
+    await expect(page.getByText(/Analytics/i).first()).toBeVisible();
   });
 });

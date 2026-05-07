@@ -1,123 +1,84 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCars } from '../hooks/useCars';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { carToRow } from '../lib/carMapper';
 import { getAdminCredentials, isAdminSession, setAdminSession } from '../lib/adminAuth';
 import { fmtPrice, fmtKm } from '../lib/utils';
 import { ImageManager } from '../components/admin/ImageManager';
+import { ATLogo } from '../components/ATLogo';
+import { getAdminAnalytics } from '../services/analyticsService';
 
 const emptyCar = {
-  id: '',
-  brand: '',
-  model: '',
-  version: '',
-  year: new Date().getFullYear(),
-  km: 0,
-  price: 0,
-  currency: 'ARS',
-  fuel: 'Nafta',
-  trans: 'Manual',
-  engine: '',
-  color: '',
-  type: 'Auto',
-  body: '',
-  badges: [],
-  desc: '',
-  images: [],
-  status: 'draft',
+  id: '', brand: '', model: '', version: '', year: new Date().getFullYear(),
+  km: 0, price: 0, currency: 'ARS', fuel: 'Nafta', trans: 'Manual',
+  engine: '', color: '', type: 'Auto', body: '', badges: [], desc: '',
+  images: [], status: 'draft',
 };
 
 const fieldStyle = {
-  width: '100%',
-  border: '1px solid var(--at-border)',
-  background: 'var(--at-surface)',
-  color: 'var(--at-ink)',
-  borderRadius: 8,
-  padding: '10px 11px',
-  fontSize: 13,
-  fontFamily: 'inherit',
-  outline: 'none',
+  width: '100%', border: '1px solid var(--at-border)', background: 'var(--at-surface)',
+  color: 'var(--at-ink)', borderRadius: 8, padding: '10px 11px',
+  fontSize: 13, fontFamily: 'inherit', outline: 'none',
 };
 
 const labelStyle = {
-  display: 'grid',
-  gap: 6,
-  fontSize: 11,
-  color: 'var(--at-ink-3)',
-  fontFamily: 'var(--at-mono)',
-  textTransform: 'uppercase',
-  letterSpacing: '.1em',
+  display: 'grid', gap: 6, fontSize: 11, color: 'var(--at-ink-3)',
+  fontFamily: 'var(--at-mono)', textTransform: 'uppercase', letterSpacing: '.1em',
 };
 
 const buttonStyle = {
-  border: 'none',
-  borderRadius: 8,
-  padding: '10px 12px',
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: 'pointer',
-  fontFamily: 'inherit',
+  border: 'none', borderRadius: 8, padding: '10px 12px',
+  fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
 };
 
-const slugify = (parts) => parts
-  .filter(Boolean)
-  .join(' ')
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, '-')
-  .replace(/(^-|-$)/g, '');
+const primaryButton = {
+  ...buttonStyle,
+  background: 'var(--at-accent)',
+  color: '#fff',
+  textDecoration: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+const ghostButton = {
+  ...buttonStyle,
+  background: 'var(--at-bg-2)',
+  color: 'var(--at-ink)',
+  textDecoration: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+const cardStyle = {
+  background: 'var(--at-surface)',
+  border: '1px solid var(--at-border)',
+  borderRadius: 12,
+  boxShadow: '0 14px 36px -28px rgba(15,23,42,.45)',
+};
+
+const slugify = (parts) => parts.filter(Boolean).join(' ')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
 const cleanImages = (images) => {
   const seen = new Set();
-  return (images || [])
-    .map(image => String(image || '').trim())
-    .filter(Boolean)
-    .filter((image) => {
-      const key = image.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  return (images || []).map(image => String(image || '').trim()).filter(Boolean).filter((image) => {
+    const key = image.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 };
 
-const formSectionStyle = {
-  border: '1px solid var(--at-border)',
-  background: 'var(--at-bg)',
-  borderRadius: 12,
-  padding: 14,
-  display: 'grid',
-  gap: 12,
+const statusLabel = {
+  published: 'Disponible',
+  sold: 'Vendido',
+  reserved: 'Reservado',
+  draft: 'Borrador',
 };
-
-function FormSection({ title, children }) {
-  return (
-    <section style={formSectionStyle}>
-      <h3 style={{ margin: 0, fontFamily: 'var(--at-display)', fontSize: 18, fontWeight: 700 }}>
-        {title}
-      </h3>
-      {children}
-    </section>
-  );
-}
-
-function TogglePill({ active, children, onClick }) {
-  return (
-    <button type="button" onClick={onClick} style={{
-      border: '1px solid ' + (active ? 'var(--at-ink)' : 'var(--at-border)'),
-      background: active ? 'var(--at-ink)' : 'var(--at-surface)',
-      color: active ? '#fff' : 'var(--at-ink)',
-      borderRadius: 999,
-      padding: '9px 12px',
-      fontSize: 12,
-      fontWeight: 800,
-      cursor: 'pointer',
-      fontFamily: 'inherit',
-    }}>
-      {children}
-    </button>
-  );
-}
 
 function Login({ onLogin }) {
   const [user, setUser] = useState('');
@@ -136,53 +97,113 @@ function Login({ onLogin }) {
   };
 
   return (
-    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 20 }}>
-      <form data-testid="admin-login-form" onSubmit={submit} style={{
-        width: '100%',
-        maxWidth: 360,
-        background: 'var(--at-surface)',
-        border: '1px solid var(--at-border)',
-        borderRadius: 12,
-        padding: 22,
-        boxShadow: '0 18px 50px -30px rgba(15,23,42,.45)',
-      }}>
-        <h1 style={{ margin: 0, fontFamily: 'var(--at-display)', fontSize: 26, fontWeight: 600 }}>
-          Admin AutosTandil
-        </h1>
-        <p style={{ margin: '8px 0 18px', fontSize: 12, lineHeight: 1.5, color: 'var(--at-ink-2)' }}>
-          Acceso temporal para gestionar stock. No reemplaza autenticacion real de produccion.
+    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 20, background: 'var(--at-bg)' }}>
+      <form data-testid="admin-login-form" onSubmit={submit} style={{ ...cardStyle, width: '100%', maxWidth: 380, padding: 24 }}>
+        <ATLogo size={24} />
+        <h1 style={{ margin: '18px 0 6px', fontFamily: 'var(--at-display)', fontSize: 28 }}>Admin AutosTandil</h1>
+        <p style={{ margin: '0 0 18px', fontSize: 13, color: 'var(--at-ink-2)', lineHeight: 1.5 }}>
+          Acceso temporal para gestionar stock, fotos y estadisticas del sitio.
         </p>
         <div style={{ display: 'grid', gap: 12 }}>
           <label style={labelStyle}>Usuario<input name="user" style={fieldStyle} value={user} onChange={e => setUser(e.target.value)} /></label>
           <label style={labelStyle}>Clave<input name="password" style={fieldStyle} type="password" value={password} onChange={e => setPassword(e.target.value)} /></label>
           {error && <div style={{ color: '#b91c1c', fontSize: 12 }}>{error}</div>}
-          <button style={{ ...buttonStyle, background: 'var(--at-ink)', color: '#fff' }}>Entrar</button>
+          <button style={primaryButton}>Entrar</button>
         </div>
       </form>
     </main>
   );
 }
 
+function AdminShell({ children, onLogout }) {
+  const { pathname } = useLocation();
+  const nav = [
+    ['/admin', 'Dashboard'],
+    ['/admin/autos', 'Autos'],
+    ['/admin/analytics', 'Analytics'],
+  ];
+  return (
+    <main style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f7f8fb, var(--at-bg) 260px)', padding: '20px 16px 48px' }}>
+      <div style={{ maxWidth: '86rem', margin: '0 auto' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', marginBottom: 18 }}>
+          <Link to="/admin" style={{ textDecoration: 'none', color: 'inherit' }}><ATLogo size={24} /></Link>
+          <nav style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {nav.map(([to, label]) => (
+              <Link key={to} to={to} style={{
+                ...ghostButton,
+                background: pathname === to ? 'var(--at-ink)' : 'var(--at-surface)',
+                color: pathname === to ? '#fff' : 'var(--at-ink)',
+              }}>{label}</Link>
+            ))}
+            <button onClick={onLogout} style={ghostButton}>Salir</button>
+          </nav>
+        </header>
+        {children}
+      </div>
+    </main>
+  );
+}
+
+function StatCard({ label, value, note }) {
+  return (
+    <div style={{ ...cardStyle, padding: 16 }}>
+      <div style={{ fontSize: 11, color: 'var(--at-ink-3)', fontFamily: 'var(--at-mono)', textTransform: 'uppercase', letterSpacing: '.12em' }}>{label}</div>
+      <div style={{ marginTop: 8, fontFamily: 'var(--at-display)', fontSize: 30, fontWeight: 800, color: 'var(--at-ink)' }}>{value}</div>
+      {note && <div style={{ marginTop: 4, fontSize: 12, color: 'var(--at-ink-2)' }}>{note}</div>}
+    </div>
+  );
+}
+
+function Dashboard({ cars, analytics }) {
+  const counts = useMemo(() => ({
+    total: cars.length,
+    available: cars.filter(c => c.status === 'published').length,
+    sold: cars.filter(c => c.status === 'sold').length,
+    reserved: cars.filter(c => c.status === 'reserved').length,
+    draft: cars.filter(c => c.status === 'draft').length,
+  }), [cars]);
+  const topCar = analytics?.topCars?.[0]?.title || 'Sin datos todavia';
+
+  return (
+    <section data-testid="admin-dashboard">
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
+        <div>
+          <div style={{ fontFamily: 'var(--at-mono)', fontSize: 11, color: 'var(--at-accent)', letterSpacing: '.14em', textTransform: 'uppercase' }}>Panel privado</div>
+          <h1 style={{ margin: '6px 0 0', fontFamily: 'var(--at-display)', fontSize: 40, letterSpacing: '-.03em' }}>Resumen AutosTandil</h1>
+        </div>
+        <Link data-testid="admin-add-car" to="/admin/autos/nuevo" style={primaryButton}>Agregar nuevo auto</Link>
+      </div>
+      <div className="grid md:grid-cols-3 lg:grid-cols-4" style={{ gap: 12 }}>
+        <StatCard label="Total de autos" value={counts.total} />
+        <StatCard label="Disponibles" value={counts.available} />
+        <StatCard label="Vendidos" value={counts.sold} />
+        <StatCard label="Borradores" value={counts.draft} />
+        <StatCard label="Reservados" value={counts.reserved} />
+        <StatCard label="Total de visitas" value={analytics?.totalPageViews ?? 0} />
+        <StatCard label="Consultas WhatsApp" value={analytics?.totalWhatsappClicks ?? 0} />
+        <StatCard label="Auto mas visto" value={topCar} />
+      </div>
+      <div className="grid md:grid-cols-4" style={{ gap: 10, marginTop: 18 }}>
+        <Link to="/admin/autos/nuevo" style={{ ...cardStyle, padding: 18, color: 'var(--at-ink)', textDecoration: 'none', fontWeight: 800 }}>Agregar nuevo auto</Link>
+        <Link to="/catalogo" style={{ ...cardStyle, padding: 18, color: 'var(--at-ink)', textDecoration: 'none', fontWeight: 800 }}>Ver catalogo</Link>
+        <Link to="/admin/analytics" style={{ ...cardStyle, padding: 18, color: 'var(--at-ink)', textDecoration: 'none', fontWeight: 800 }}>Ver analytics</Link>
+        <Link to="/admin/autos" style={{ ...cardStyle, padding: 18, color: 'var(--at-ink)', textDecoration: 'none', fontWeight: 800 }}>Gestionar autos</Link>
+      </div>
+    </section>
+  );
+}
+
 function CarForm({ value, onChange, onSubmit, saving, onCancel }) {
   const badges = value.badges || [];
-
   const patch = (key, nextValue) => onChange({ ...value, [key]: nextValue });
   const patchNumber = (key, nextValue) => patch(key, Number(nextValue) || 0);
-  const toggleBadge = (badge) => {
-    patch('badges', badges.includes(badge) ? badges.filter(item => item !== badge) : [...badges, badge]);
-  };
+  const toggleBadge = (badge) => patch('badges', badges.includes(badge) ? badges.filter(item => item !== badge) : [...badges, badge]);
 
   const submit = (event) => {
     event.preventDefault();
     const id = value.id || slugify([value.brand, value.model, value.year]);
     const images = cleanImages(value.images || value.photoUrls);
-    onSubmit({
-      ...value,
-      id,
-      images,
-      photoUrls: images,
-      thumbUrl: images[0] || '',
-    });
+    onSubmit({ ...value, id, images, photoUrls: images, thumbUrl: images[0] || '' });
   };
 
   return (
@@ -201,7 +222,6 @@ function CarForm({ value, onChange, onSubmit, saving, onCancel }) {
           <label style={labelStyle}>Moneda<input style={fieldStyle} value={value.currency} onChange={e => patch('currency', e.target.value)} /></label>
         </div>
       </FormSection>
-
       <FormSection title="Caracteristicas">
         <div className="grid md:grid-cols-4" style={{ gap: 10 }}>
           <label style={labelStyle}>Combustible<input style={fieldStyle} value={value.fuel} onChange={e => patch('fuel', e.target.value)} /></label>
@@ -214,69 +234,188 @@ function CarForm({ value, onChange, onSubmit, saving, onCancel }) {
           <label style={labelStyle}>Motor<input style={fieldStyle} value={value.engine} onChange={e => patch('engine', e.target.value)} /></label>
         </div>
       </FormSection>
-
-      <ImageManager
-        images={value.images || value.photoUrls || []}
-        onChange={(images) => onChange({ ...value, images, photoUrls: images, thumbUrl: images[0] || '' })}
-      />
-
+      <ImageManager images={value.images || value.photoUrls || []} onChange={(images) => onChange({ ...value, images, photoUrls: images, thumbUrl: images[0] || '' })} />
       <FormSection title="Publicacion">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <TogglePill active={badges.includes('destacado')} onClick={() => toggleBadge('destacado')}>Destacado</TogglePill>
-          <TogglePill active={badges.includes('financia')} onClick={() => toggleBadge('financia')}>Financiacion</TogglePill>
-          <TogglePill active={badges.includes('permuta')} onClick={() => toggleBadge('permuta')}>Permuta</TogglePill>
-          <TogglePill active={badges.includes('nuevo')} onClick={() => toggleBadge('nuevo')}>Nuevo ingreso</TogglePill>
+          {[
+            ['destacado', 'Destacado'], ['financia', 'Financiacion'], ['permuta', 'Permuta'], ['nuevo', 'Nuevo ingreso'],
+          ].map(([badge, label]) => (
+            <button key={badge} type="button" onClick={() => toggleBadge(badge)} style={{
+              ...ghostButton,
+              border: '1px solid ' + (badges.includes(badge) ? 'var(--at-ink)' : 'var(--at-border)'),
+              background: badges.includes(badge) ? 'var(--at-ink)' : 'var(--at-surface)',
+              color: badges.includes(badge) ? '#fff' : 'var(--at-ink)',
+            }}>{label}</button>
+          ))}
         </div>
         <label style={labelStyle}>Estado
           <select style={fieldStyle} value={value.status} onChange={e => patch('status', e.target.value)}>
             <option value="draft">Borrador</option>
-            <option value="published">Publicado</option>
+            <option value="published">Disponible</option>
             <option value="reserved">Reservado</option>
             <option value="sold">Vendido</option>
           </select>
         </label>
       </FormSection>
-
       <FormSection title="Descripcion">
         <label style={labelStyle}>Descripcion comercial<textarea style={{ ...fieldStyle, minHeight: 108, resize: 'vertical' }} value={value.desc} onChange={e => patch('desc', e.target.value)} /></label>
       </FormSection>
-
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-        <button type="button" onClick={onCancel} style={{ ...buttonStyle, background: 'var(--at-bg-2)', color: 'var(--at-ink)' }}>Limpiar</button>
-        <button disabled={saving || !hasSupabaseConfig} style={{ ...buttonStyle, background: 'var(--at-ink)', color: '#fff', opacity: saving || !hasSupabaseConfig ? .55 : 1 }}>
-          {saving ? 'Guardando...' : 'Guardar auto'}
-        </button>
+        <button type="button" onClick={onCancel} style={ghostButton}>Cancelar</button>
+        <button disabled={saving || !hasSupabaseConfig} style={{ ...primaryButton, opacity: saving || !hasSupabaseConfig ? .55 : 1 }}>{saving ? 'Guardando...' : 'Guardar auto'}</button>
       </div>
     </form>
+  );
+}
+
+function FormSection({ title, children }) {
+  return (
+    <section style={{ ...cardStyle, padding: 16, display: 'grid', gap: 12 }}>
+      <h3 style={{ margin: 0, fontFamily: 'var(--at-display)', fontSize: 18 }}>{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function AutosList({ cars, loading, onStatus, onDelete }) {
+  const [q, setQ] = useState('');
+  const [status, setStatus] = useState('all');
+  const filtered = useMemo(() => cars.filter((car) => {
+    const haystack = `${car.brand} ${car.model} ${car.version}`.toLowerCase();
+    if (q && !haystack.includes(q.toLowerCase())) return false;
+    if (status !== 'all' && car.status !== status) return false;
+    return true;
+  }), [cars, q, status]);
+
+  return (
+    <section>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 16 }}>
+        <div>
+          <h1 style={{ margin: 0, fontFamily: 'var(--at-display)', fontSize: 36 }}>Autos publicados</h1>
+          <p style={{ margin: '6px 0 0', color: 'var(--at-ink-2)', fontSize: 13 }}>{filtered.length} unidades en gestion.</p>
+        </div>
+        <Link data-testid="admin-add-car" to="/admin/autos/nuevo" style={primaryButton}>Agregar nuevo auto</Link>
+      </div>
+      <div style={{ ...cardStyle, padding: 12, marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar marca, modelo o version" style={{ ...fieldStyle, flex: '1 1 260px' }} />
+        {[
+          ['all', 'Todos'], ['published', 'Disponible'], ['sold', 'Vendido'], ['reserved', 'Reservado'], ['draft', 'Borrador'],
+        ].map(([value, label]) => (
+          <button key={value} onClick={() => setStatus(value)} style={{ ...ghostButton, background: status === value ? 'var(--at-ink)' : 'var(--at-bg-2)', color: status === value ? '#fff' : 'var(--at-ink)' }}>{label}</button>
+        ))}
+      </div>
+      <div data-testid="admin-cars-list" style={{ display: 'grid', gap: 10 }}>
+        {loading ? <div style={{ color: 'var(--at-ink-2)' }}>Cargando stock...</div> : filtered.map(car => (
+          <article key={car.id} style={{ ...cardStyle, padding: 10, display: 'grid', gridTemplateColumns: '104px 1fr', gap: 12 }}>
+            <div style={{ position: 'relative', width: 104, aspectRatio: '4/3', borderRadius: 10, overflow: 'hidden', background: 'var(--at-bg-2)' }}>
+              {car.thumbUrl ? <img src={car.thumbUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ height: '100%', display: 'grid', placeItems: 'center', fontSize: 11 }}>Sin foto</div>}
+              <span style={{ position: 'absolute', right: 6, bottom: 6, borderRadius: 999, padding: '3px 6px', background: 'rgba(255,255,255,.94)', fontSize: 10, fontWeight: 800 }}>{(car.images || car.photoUrls || []).length} fotos</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <div>
+                <strong style={{ fontFamily: 'var(--at-display)', fontSize: 17 }}>{car.brand} {car.model}</strong>
+                <div style={{ color: 'var(--at-ink-2)', fontSize: 12, marginTop: 2 }}>{car.version}</div>
+                <div style={{ color: 'var(--at-ink-3)', fontSize: 11, marginTop: 5 }}>{car.year} / {fmtKm(car.km)} / {fmtPrice(car.price)} / {statusLabel[car.status] || car.status}</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                  {['destacado', 'financia', 'permuta', 'nuevo'].map(badge => car.badges?.includes(badge) && <span key={badge} style={{ borderRadius: 999, padding: '3px 7px', background: 'var(--at-bg-2)', fontSize: 10, fontWeight: 800 }}>{badge}</span>)}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <Link to={`/admin/autos/${car.id}/editar`} style={ghostButton}>Editar</Link>
+                <Link to={`/auto/${car.id}`} style={ghostButton}>Ver en web</Link>
+                <select value={car.status} onChange={e => onStatus(car, e.target.value)} style={{ ...fieldStyle, width: 'auto', padding: '9px 10px' }}>
+                  <option value="published">Disponible</option><option value="reserved">Reservado</option><option value="sold">Vendido</option><option value="draft">Borrador</option>
+                </select>
+                <button style={{ ...ghostButton, background: '#fee2e2', color: '#991b1b' }} onClick={() => onDelete(car)}>Eliminar</button>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AnalyticsView({ analytics }) {
+  if (!analytics) {
+    return <div data-testid="admin-analytics" style={{ ...cardStyle, padding: 24 }}>No se pudieron cargar estadisticas todavia.</div>;
+  }
+  const maxViews = Math.max(...(analytics.ranking || []).map(row => row.views), 1);
+  return (
+    <section data-testid="admin-analytics">
+      <h1 style={{ margin: '0 0 16px', fontFamily: 'var(--at-display)', fontSize: 36 }}>Analytics</h1>
+      <div className="grid md:grid-cols-3" style={{ gap: 12 }}>
+        <StatCard label="Visitas totales" value={analytics.totalPageViews} />
+        <StatCard label="Visitas 7 dias" value={analytics.pageViews7d} />
+        <StatCard label="Clicks WhatsApp" value={analytics.totalWhatsappClicks} />
+      </div>
+      <div className="grid lg:grid-cols-2" style={{ gap: 12, marginTop: 14 }}>
+        <div style={{ ...cardStyle, padding: 16 }}>
+          <h2 style={{ margin: '0 0 12px', fontFamily: 'var(--at-display)', fontSize: 20 }}>Ranking autos</h2>
+          {analytics.ranking?.length ? analytics.ranking.slice(0, 8).map(row => (
+            <div key={row.slug} style={{ padding: '10px 0', borderTop: '1px solid var(--at-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}><strong>{row.title}</strong><span>{row.views} vistas / {row.clicks} clicks</span></div>
+              <div style={{ height: 7, borderRadius: 999, background: 'var(--at-bg-2)', marginTop: 7 }}><div style={{ height: '100%', width: `${Math.max(6, (row.views / maxViews) * 100)}%`, borderRadius: 999, background: 'var(--at-accent)' }} /></div>
+              <div style={{ marginTop: 4, fontSize: 11, color: 'var(--at-ink-3)' }}>Conversion aprox. {row.conversion}%</div>
+            </div>
+          )) : <p style={{ color: 'var(--at-ink-2)', fontSize: 13 }}>Todavia no hay datos suficientes.</p>}
+        </div>
+        <div style={{ ...cardStyle, padding: 16 }}>
+          <h2 style={{ margin: '0 0 12px', fontFamily: 'var(--at-display)', fontSize: 20 }}>Paginas mas visitadas</h2>
+          {analytics.topPages?.length ? analytics.topPages.map(page => <div key={page.key} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderTop: '1px solid var(--at-border)', fontSize: 13 }}><span>{page.key}</span><strong>{page.count}</strong></div>) : <p style={{ color: 'var(--at-ink-2)', fontSize: 13 }}>Sin visitas registradas.</p>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FormRoute({ initialCar, title, onSubmit, saving, onCancel }) {
+  const [draftCar, setDraftCar] = useState(initialCar);
+
+  return (
+    <section>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'center', marginBottom: 16 }}>
+        <h1 style={{ margin: 0, fontFamily: 'var(--at-display)', fontSize: 36 }}>{title}</h1>
+        <Link to="/admin/autos" style={ghostButton}>Volver al listado</Link>
+      </div>
+      <CarForm value={draftCar} onChange={setDraftCar} onSubmit={onSubmit} saving={saving} onCancel={onCancel} />
+    </section>
   );
 }
 
 export default function Admin() {
   const [logged, setLogged] = useState(isAdminSession());
   const { cars, loading, source, reload, configured } = useCars({ includeDrafts: true });
-  const [editing, setEditing] = useState(emptyCar);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  const { pathname } = useLocation();
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-  const sortedCars = useMemo(() => [...cars].sort((a, b) => a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model)), [cars]);
+  useEffect(() => {
+    getAdminAnalytics().then(setAnalytics);
+  }, [pathname]);
 
   if (!logged) return <Login onLogin={() => setLogged(true)} />;
+
+  const editingCar = id ? cars.find(car => car.id === id) : null;
+  const isForm = pathname === '/admin/autos/nuevo' || pathname.endsWith('/editar');
 
   const saveCar = async (car) => {
     if (!hasSupabaseConfig) return;
     setSaving(true);
     setMessage('');
-    const row = carToRow(car);
-    const { error } = await supabase.from('autos').upsert(row, { onConflict: 'id' });
+    const { error } = await supabase.from('autos').upsert(carToRow(car), { onConflict: 'id' });
     setSaving(false);
     if (error) {
       setMessage(error.message);
       return;
     }
-    setEditing(emptyCar);
     setMessage('Auto guardado.');
-    reload();
+    await reload();
+    navigate('/admin/autos');
   };
 
   const changeStatus = async (car, status) => {
@@ -300,120 +439,34 @@ export default function Admin() {
   };
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--at-bg)', padding: '24px 16px 48px' }}>
-      <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', marginBottom: 20 }}>
-          <div>
-            <div style={{ fontFamily: 'var(--at-mono)', fontSize: 11, color: 'var(--at-ink-3)', letterSpacing: '.14em', textTransform: 'uppercase' }}>
-              Panel privado MVP
-            </div>
-            <h1 style={{ margin: '6px 0 0', fontFamily: 'var(--at-display)', fontSize: 34, fontWeight: 600 }}>
-              Stock AutosTandil
-            </h1>
-            <p style={{ margin: '6px 0 0', color: 'var(--at-ink-2)', fontSize: 13 }}>
-              Fuente actual: {source}. {configured ? 'Supabase configurado.' : 'Faltan VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.'}
-            </p>
-          </div>
-          <button onClick={() => { setAdminSession(false); setLogged(false); }} style={{ ...buttonStyle, background: 'var(--at-bg-2)', color: 'var(--at-ink)' }}>
-            Salir
-          </button>
-        </header>
-
-        {message && (
-          <div style={{ border: '1px solid var(--at-border)', background: 'var(--at-surface)', borderRadius: 8, padding: 12, marginBottom: 14, fontSize: 13 }}>
-            {message}
-          </div>
-        )}
-
-        <section style={{ background: 'var(--at-surface)', border: '1px solid var(--at-border)', borderRadius: 12, padding: 16, marginBottom: 18 }}>
-          <h2 style={{ margin: '0 0 14px', fontFamily: 'var(--at-display)', fontSize: 20 }}>Crear o editar auto</h2>
-          <CarForm value={editing} onChange={setEditing} onSubmit={saveCar} saving={saving} onCancel={() => setEditing(emptyCar)} />
-        </section>
-
-        <section data-testid="admin-cars-list" style={{ display: 'grid', gap: 10 }}>
-          {loading ? <div style={{ color: 'var(--at-ink-2)' }}>Cargando stock...</div> : sortedCars.map(car => (
-            <article key={car.id} style={{
-              display: 'grid',
-              gridTemplateColumns: '96px 1fr',
-              gap: 12,
-              background: 'var(--at-surface)',
-              border: '1px solid var(--at-border)',
-              borderRadius: 10,
-              padding: 10,
-            }}>
-              <div style={{ position: 'relative', width: 96, aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden', background: 'var(--at-bg-2)' }}>
-                {car.thumbUrl ? (
-                  <img src={car.thumbUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                ) : (
-                  <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--at-ink-3)', fontSize: 11, textAlign: 'center', padding: 8 }}>
-                    Sin foto
-                  </div>
-                )}
-                <span style={{
-                  position: 'absolute',
-                  right: 6,
-                  bottom: 6,
-                  borderRadius: 999,
-                  padding: '3px 6px',
-                  background: 'rgba(255,255,255,.92)',
-                  fontSize: 10,
-                  fontWeight: 800,
-                  color: 'var(--at-ink)',
-                }}>
-                  {(car.images || car.photoUrls || []).length} fotos
-                </span>
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                  <div>
-                    <strong style={{ fontFamily: 'var(--at-display)', fontSize: 16 }}>{car.brand} {car.model}</strong>
-                    <div style={{ color: 'var(--at-ink-2)', fontSize: 12, marginTop: 2 }}>{car.version}</div>
-                    <div style={{ color: 'var(--at-ink-3)', fontSize: 11, marginTop: 4 }}>{car.year} / {fmtKm(car.km)} / {fmtPrice(car.price)} / {car.status}</div>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                      {['destacado', 'financia', 'permuta'].map(badge => car.badges?.includes(badge) && (
-                        <span key={badge} style={{
-                          borderRadius: 999,
-                          padding: '3px 7px',
-                          background: 'var(--at-bg-2)',
-                          color: 'var(--at-ink-2)',
-                          fontSize: 10,
-                          fontWeight: 800,
-                          textTransform: 'uppercase',
-                        }}>
-                          {badge}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                    <button style={{ ...buttonStyle, background: 'var(--at-bg-2)', color: 'var(--at-ink)' }} onClick={() => setEditing(car)}>Editar</button>
-                    <a href={`/auto/${car.id}`} style={{ ...buttonStyle, background: 'var(--at-bg-2)', color: 'var(--at-ink)', textDecoration: 'none', display: 'inline-flex' }}>Ver</a>
-                    <button style={{ ...buttonStyle, background: '#dcfce7', color: '#166534' }} onClick={() => changeStatus(car, 'published')}>Publicar</button>
-                    <button style={{ ...buttonStyle, background: '#fef3c7', color: '#92400e' }} onClick={() => changeStatus(car, 'reserved')}>Reservar</button>
-                    <button style={{ ...buttonStyle, background: '#e5e7eb', color: '#374151' }} onClick={() => changeStatus(car, 'sold')}>Vendido</button>
-                    <button style={{ ...buttonStyle, background: '#fee2e2', color: '#991b1b' }} onClick={() => setConfirmDelete(car)}>Eliminar</button>
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
-        </section>
-      </div>
-
+    <AdminShell onLogout={() => { setAdminSession(false); setLogged(false); }}>
+      {message && <div style={{ ...cardStyle, padding: 12, marginBottom: 14, fontSize: 13 }}>{message}</div>}
+      {!configured && <div style={{ ...cardStyle, padding: 12, marginBottom: 14, fontSize: 13, color: '#92400e' }}>Fuente actual: {source}. Faltan variables Supabase, se muestran mocks.</div>}
+      {(pathname === '/admin' || pathname === '/admin/login') && <Dashboard cars={cars} analytics={analytics} />}
+      {pathname === '/admin/autos' && <AutosList cars={cars} loading={loading} onStatus={changeStatus} onDelete={setConfirmDelete} />}
+      {pathname === '/admin/analytics' && <AnalyticsView analytics={analytics} />}
+      {isForm && (
+        <FormRoute
+          key={pathname}
+          initialCar={editingCar || emptyCar}
+          title={editingCar ? 'Editar auto' : 'Agregar nuevo auto'}
+          onSubmit={saveCar}
+          saving={saving}
+          onCancel={() => navigate('/admin/autos')}
+        />
+      )}
       {confirmDelete && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.5)', display: 'grid', placeItems: 'center', padding: 20, zIndex: 100 }}>
-          <div style={{ maxWidth: 420, background: 'var(--at-surface)', borderRadius: 12, padding: 20, border: '1px solid var(--at-border)' }}>
+          <div style={{ ...cardStyle, maxWidth: 420, padding: 20 }}>
             <h2 style={{ margin: 0, fontFamily: 'var(--at-display)', fontSize: 22 }}>Confirmar eliminacion</h2>
-            <p style={{ fontSize: 13, color: 'var(--at-ink-2)', lineHeight: 1.5 }}>
-              Se eliminara solo el auto con ID <strong>{confirmDelete.id}</strong>. Esta accion es puntual y no afecta otros registros.
-            </p>
+            <p style={{ fontSize: 13, color: 'var(--at-ink-2)', lineHeight: 1.5 }}>Se eliminara solo el auto con ID <strong>{confirmDelete.id}</strong>.</p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button style={{ ...buttonStyle, background: 'var(--at-bg-2)', color: 'var(--at-ink)' }} onClick={() => setConfirmDelete(null)}>Cancelar</button>
-              <button style={{ ...buttonStyle, background: '#b91c1c', color: '#fff' }} onClick={deleteCar}>Eliminar este auto</button>
+              <button style={ghostButton} onClick={() => setConfirmDelete(null)}>Cancelar</button>
+              <button style={{ ...primaryButton, background: '#b91c1c' }} onClick={deleteCar}>Eliminar este auto</button>
             </div>
           </div>
         </div>
       )}
-    </main>
+    </AdminShell>
   );
 }

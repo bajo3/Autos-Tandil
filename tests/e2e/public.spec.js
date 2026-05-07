@@ -47,7 +47,13 @@ test.describe('public smoke tests', () => {
     const whatsapp = page.locator('[data-testid="whatsapp-cta"]:visible').first();
     await expect(whatsapp).toBeVisible();
     await expect(whatsapp).toHaveAttribute('href', /wa\.me\/5492494621182/);
+    await whatsapp.click();
     await expect(page.locator('img').first()).toBeVisible();
+  });
+
+  test('home logo is visible', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('app-logo').first()).toBeVisible();
   });
 
   test('detail route starts at top after navigating from scrolled catalog', async ({ page }) => {
