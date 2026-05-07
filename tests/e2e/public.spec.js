@@ -18,7 +18,7 @@ test.describe('public smoke tests', () => {
   test('catalog shows search, filters area and car cards when data is available', async ({ page }) => {
     await page.goto('/catalogo');
 
-    await expect(page.getByPlaceholder(/marca, modelo/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/marca, modelo/i).first()).toBeVisible();
     await expect(page.getByTestId('catalog-grid')).toBeVisible();
     await expect(page.getByTestId('car-card').first()).toBeVisible();
   });

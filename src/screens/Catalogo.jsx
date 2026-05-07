@@ -14,7 +14,7 @@ const unique = (cars, key, fallback = []) => {
   return values.length ? values : fallback;
 };
 
-export default function Catalogo({ favs, onFav, cars = [], loadingCars = false, source = 'mock' }) {
+export default function Catalogo({ favs, onFav, cars = [], loadingCars = false }) {
   const navigate = useNavigate();
   const { state } = useLocation();
 
@@ -27,6 +27,7 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false, 
   const [sort, setSort] = useState(state?.sort || 'featured');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
   const options = useMemo(() => ({
     brands: unique(cars, 'brand'),
     types: unique(cars, 'type', ['Auto', 'Camioneta', 'SUV', 'Utilitario']),
@@ -75,70 +76,112 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false, 
   if (filters.minYear) activeChips.push({ k: 'minYear', l: 'Desde ' + filters.minYear });
 
   const clearChip = (k) => setFilters(f => ({ ...f, [k]: null }));
+  const clearAll = () => { setFilters({ type: null, brand: null, fuel: null, trans: null, badge: null, minPrice: null, maxPrice: null, minYear: null, maxYear: null }); setQ(''); };
 
   return (
     <div className="pb-[88px] md:pb-0">
-      {/* Mobile header — hidden on desktop via AppHeader's md:hidden wrapper */}
+
+      {/* Mobile header */}
       <AppHeader onBack={() => navigate('/')} title="Catálogo" right={
         <button onClick={() => setDrawerOpen(true)} aria-label="Filtros"
-          style={{ ...hdrBtn(false), background: 'var(--at-bg-2)', position: 'relative' }}>
+          style={{ ...hdrBtn(false), background: 'var(--at-bg-2)', border: '1px solid var(--at-border)', position: 'relative' }}>
           <IconFilter size={18} stroke="var(--at-ink)" />
           {activeChips.length > 0 && (
             <span style={{
-              position: 'absolute', top: 4, right: 4,
-              width: 8, height: 8, borderRadius: 999, background: 'var(--at-accent)',
+              position: 'absolute', top: 3, right: 3,
+              width: 9, height: 9, borderRadius: 999, background: 'var(--at-accent)',
+              border: '1.5px solid var(--at-bg)',
             }} />
           )}
         </button>
       } />
 
-      {/* Desktop page title */}
-      <div className="hidden md:block" style={{ borderBottom: '1px solid var(--at-border)', padding: '28px 0 20px' }}>
+      {/* Desktop page header */}
+      <div className="hidden md:block" style={{ borderBottom: '1px solid var(--at-border)', background: 'var(--at-bg)', padding: '24px 0 0' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 32px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <h1 style={{
-              margin: 0, fontFamily: 'var(--at-display)',
-              fontSize: 36, fontWeight: 500, letterSpacing: '-.03em', color: 'var(--at-ink)',
-            }}>Catálogo</h1>
-            <span style={{ fontFamily: 'var(--at-mono)', fontSize: 11, color: 'var(--at-ink-3)' }}>
-              {filtered.length} autos {source === 'mock' ? 'mock' : ''}
-            </span>
+          {/* Title + search */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
+            <div>
+              <h1 style={{
+                margin: 0, fontFamily: 'var(--at-display)',
+                fontSize: 34, fontWeight: 500, letterSpacing: '-.03em', color: 'var(--at-ink)',
+                lineHeight: 1,
+              }}>Catálogo</h1>
+              <div style={{ fontFamily: 'var(--at-mono)', fontSize: 11, color: 'var(--at-ink-3)', marginTop: 4 }}>
+                {filtered.length} autos disponibles
+              </div>
+            </div>
+            {/* Desktop search */}
+            <div style={{ flex: 1, maxWidth: 420, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--at-surface)', padding: '10px 16px', borderRadius: 999, border: '1px solid var(--at-border)' }}>
+              <IconSearch size={16} sw={1.8} stroke="var(--at-ink-3)" />
+              <input value={q} onChange={e => setQ(e.target.value)}
+                placeholder="Buscar marca, modelo, año…"
+                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, color: 'var(--at-ink)', fontFamily: 'inherit' }} />
+              {q && (
+                <button onClick={() => setQ('')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}>
+                  <IconClose size={14} stroke="var(--at-ink-3)" />
+                </button>
+              )}
+            </div>
+            {/* Desktop sort */}
+            <select value={sort} onChange={e => setSort(e.target.value)} style={{
+              border: '1px solid var(--at-border)', background: 'var(--at-surface)', borderRadius: 8,
+              padding: '9px 12px', fontSize: 13, color: 'var(--at-ink)', fontWeight: 500,
+              fontFamily: 'inherit', cursor: 'pointer', flexShrink: 0,
+            }}>
+              <option value="featured">Destacados primero</option>
+              <option value="new">Más nuevos</option>
+              <option value="price-asc">Menor precio</option>
+              <option value="price-desc">Mayor precio</option>
+              <option value="km">Menor km</option>
+            </select>
           </div>
+          {/* Active chips (desktop) */}
+          {activeChips.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, paddingBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              {activeChips.map(ch => (
+                <span key={ch.k} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '5px 6px 5px 11px', borderRadius: 999,
+                  background: 'var(--at-ink)', color: '#fff',
+                  fontSize: 11.5, fontWeight: 500, whiteSpace: 'nowrap',
+                }}>
+                  {ch.l}
+                  <button onClick={() => clearChip(ch.k)} style={{
+                    width: 18, height: 18, borderRadius: 999, border: 'none',
+                    background: 'rgba(255,255,255,.15)', color: '#fff',
+                    display: 'grid', placeItems: 'center', cursor: 'pointer',
+                  }}><IconClose size={9} sw={2.5} stroke="#fff"/></button>
+                </span>
+              ))}
+              <button onClick={clearAll} style={{
+                padding: '5px 12px', borderRadius: 999, border: '1px solid var(--at-border)',
+                background: 'transparent', fontSize: 11.5, color: 'var(--at-ink-2)', cursor: 'pointer', fontFamily: 'inherit',
+              }}>Limpiar todo</button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Content container */}
-      <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
-        {/* Search + sort bar */}
-        <div style={{ padding: '10px 14px 6px', background: 'var(--at-bg)' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: 'var(--at-bg-2)', padding: '10px 14px', borderRadius: 999,
-          }}>
-            <IconSearch size={16} sw={1.8} stroke="var(--at-ink-2)" />
+      {/* Mobile: search + sort bar */}
+      <div className="md:hidden">
+        <div style={{ padding: '10px 14px 4px', background: 'var(--at-bg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--at-surface)', padding: '11px 14px', borderRadius: 999, border: '1px solid var(--at-border)' }}>
+            <IconSearch size={16} sw={1.8} stroke="var(--at-ink-3)" />
             <input value={q} onChange={e => setQ(e.target.value)}
               placeholder="Marca, modelo, año…"
-              style={{
-                flex: 1, border: 'none', outline: 'none',
-                background: 'transparent', fontSize: 13.5, color: 'var(--at-ink)',
-                fontFamily: 'inherit',
-              }} />
+              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, color: 'var(--at-ink)', fontFamily: 'inherit' }} />
             {q && (
-              <button onClick={() => setQ('')}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}>
-                <IconClose size={14} stroke="var(--at-ink-2)" />
+              <button onClick={() => setQ('')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}>
+                <IconClose size={14} stroke="var(--at-ink-3)" />
               </button>
             )}
           </div>
         </div>
-
-        {/* Sort + count (mobile) */}
-        <div className="md:hidden" style={{ padding: '6px 14px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 11.5, color: 'var(--at-ink-3)', fontFamily: 'var(--at-mono)' }}>
-            {filtered.length} resultados
-          </span>
+        <div style={{ padding: '4px 14px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 11.5, color: 'var(--at-ink-3)', fontFamily: 'var(--at-mono)' }}>{filtered.length} resultados</span>
           <select value={sort} onChange={e => setSort(e.target.value)}
-            style={{ border: 'none', background: 'transparent', fontSize: 12, color: 'var(--at-ink)', fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+            style={{ border: 'none', background: 'transparent', fontSize: 12.5, color: 'var(--at-ink)', fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
             <option value="featured">Destacados</option>
             <option value="new">Más nuevos</option>
             <option value="price-asc">Menor precio</option>
@@ -146,10 +189,9 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false, 
             <option value="km">Menor km</option>
           </select>
         </div>
-
-        {/* Active chips */}
+        {/* Mobile active chips */}
         {activeChips.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, padding: '4px 14px 4px', overflowX: 'auto' }} className="hide-scroll">
+          <div className="hide-scroll" style={{ display: 'flex', gap: 6, padding: '0 14px 6px', overflowX: 'auto' }}>
             {activeChips.map(ch => (
               <span key={ch.k} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -167,32 +209,28 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false, 
             ))}
           </div>
         )}
+      </div>
 
-        {/* Sidebar + grid */}
+      {/* Main content */}
+      <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
         <div className="md:flex md:gap-8 md:items-start md:px-8 md:pt-6">
-          {/* Filter sidebar — desktop only */}
-          <div className="hidden md:block">
+          {/* Sidebar — desktop only */}
+          <div className="hidden md:block" style={{ flexShrink: 0 }}>
             <FilterSidebar filters={filters} setFilters={setFilters} options={options} />
           </div>
 
-          {/* Card area */}
-          <div style={{ flex: 1 }}>
-            {/* Desktop sort row */}
-            <div className="hidden md:flex md:items-center md:justify-between md:mb-4">
+          {/* Grid */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Desktop: result count (below header) */}
+            <div className="hidden md:block md:mb-4">
               <span style={{ fontFamily: 'var(--at-mono)', fontSize: 11, color: 'var(--at-ink-3)' }}>
-                {filtered.length} resultados
+                {filtered.length} {filtered.length === 1 ? 'auto' : 'autos'} encontrados
               </span>
-              <select value={sort} onChange={e => setSort(e.target.value)}
-                style={{ border: '1px solid var(--at-border)', background: 'var(--at-surface)', borderRadius: 8, padding: '6px 10px', fontSize: 12.5, color: 'var(--at-ink)', fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer' }}>
-                <option value="featured">Destacados</option>
-                <option value="new">Más nuevos</option>
-                <option value="price-asc">Menor precio</option>
-                <option value="price-desc">Mayor precio</option>
-                <option value="km">Menor km</option>
-              </select>
             </div>
 
-            <div data-testid="catalog-grid" className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" style={{ padding: '12px 14px 24px' }}>
+            <div data-testid="catalog-grid"
+              className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+              style={{ padding: '12px 14px 32px' }}>
               {loading || loadingCars ? (
                 [1,2,3,4,5,6].map(i => <SkeletonCard key={i} />)
               ) : filtered.length === 0 ? (
@@ -200,7 +238,7 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false, 
                   <EmptyState
                     title="Sin resultados"
                     desc="Probá ajustar los filtros o buscar con otro término."
-                    cta={{ label: 'Limpiar filtros', onClick: () => { setFilters({}); setQ(''); } }}
+                    cta={{ label: 'Limpiar filtros', onClick: clearAll }}
                   />
                 </div>
               ) : (

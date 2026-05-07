@@ -27,5 +27,8 @@ export async function loginAdmin(page) {
   await page.locator('input[name="user"]').fill(process.env.VITE_ADMIN_USER || 'admin');
   await page.locator('input[name="password"]').fill(process.env.VITE_ADMIN_PASSWORD || 'admin');
   await page.getByRole('button', { name: /entrar/i }).click();
+  await expect(page.getByTestId('admin-cars-list')).toBeVisible();
+  // Open the form panel (hidden by default — shown on demand)
+  await page.getByTestId('btn-add-car').click();
   await expect(page.getByTestId('admin-car-form')).toBeVisible();
 }

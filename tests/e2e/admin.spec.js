@@ -9,6 +9,8 @@ test.describe('admin', () => {
     await page.locator('input[name="user"]').fill('admin');
     await page.locator('input[name="password"]').fill('admin');
     await page.getByRole('button', { name: /entrar/i }).click();
+    await expect(page.getByTestId('admin-cars-list')).toBeVisible();
+    await page.getByTestId('btn-add-car').click();
     await expect(page.getByTestId('admin-car-form')).toBeVisible();
 
     await page.getByRole('button', { name: /salir/i }).click();
