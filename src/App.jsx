@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Splash } from './components/Splash';
 import { useFavorites } from './hooks/useFavorites';
 import { useRecents } from './hooks/useRecents';
 import { useCars } from './hooks/useCars';
@@ -54,8 +55,18 @@ export default function App() {
   const { pathname } = useLocation();
   const showNav = NAV_ROUTES.includes(pathname);
 
+  // Show splash only once per browser session
+  const [splashDone, setSplashDone] = useState(() => {
+    try {
+      const shown = sessionStorage.getItem('at_splash');
+      if (!shown) { sessionStorage.setItem('at_splash', '1'); return false; }
+    } catch { /* ignore */ }
+    return true;
+  });
+
   return (
     <>
+      {!splashDone && <Splash onDone={() => setSplashDone(true)} />}
       <ScrollToTop />
       <AnalyticsTracker />
       <DesktopNav favCount={favs.length} />

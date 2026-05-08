@@ -113,3 +113,29 @@ input[type="range"]::-moz-range-thumb {
 }
 
 ::selection { background: var(--at-accent); color: #fff; }
+
+/* ─── Splash & modal animations ─── */
+@keyframes splashLogoIn {
+  from { opacity: 0; transform: scale(.72) translateY(18px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes splashTagIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes splashBarFill {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+@keyframes splashFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes sheetUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInBg {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

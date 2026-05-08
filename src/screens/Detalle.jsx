@@ -104,19 +104,37 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
           {car.brand} {car.model}
         </h1>
         <div style={{ fontSize: 13, color: 'var(--at-ink-2)' }}>{car.version}</div>
-        <div style={{ marginTop: 14, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ marginTop: 14 }}>
           <div style={{
             fontFamily: 'var(--at-display)', fontSize: 32, fontWeight: 600,
             letterSpacing: '-.025em', color: 'var(--at-ink)',
           }}>{fmtPrice(car.price)}</div>
           {car.badges.includes('financia') && (
             <button onClick={() => setShowCalc(true)} style={{
-              padding: '5px 10px', borderRadius: 999, border: '1px solid var(--at-border)',
-              background: 'var(--at-surface)', fontSize: 11, fontWeight: 600,
-              color: 'var(--at-ink)', cursor: 'pointer', display: 'inline-flex',
-              alignItems: 'center', gap: 4, fontFamily: 'inherit',
+              width: '100%', marginTop: 12, padding: '13px 14px',
+              borderRadius: 14,
+              border: '2px solid var(--at-accent)',
+              background: 'var(--at-accent-soft)',
+              cursor: 'pointer', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', gap: 12,
+              textAlign: 'left',
             }}>
-              <IconCalc size={11} sw={1.8}/>Calcular cuotas
+              <span style={{
+                width: 40, height: 40, borderRadius: 10,
+                background: 'var(--at-accent)',
+                display: 'grid', placeItems: 'center', flexShrink: 0,
+              }}>
+                <IconCalc size={17} stroke="#fff" sw={1.6} />
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--at-accent)', letterSpacing: '-.01em' }}>
+                  Financiá en cuotas
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--at-ink-2)', marginTop: 2 }}>
+                  Calculá tu cuota mensual con CreditCar
+                </div>
+              </div>
+              <span style={{ fontSize: 16, color: 'var(--at-accent)', opacity: .6, flexShrink: 0 }}>→</span>
             </button>
           )}
         </div>
