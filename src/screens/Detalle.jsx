@@ -23,6 +23,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
   const [showCalc, setShowCalc] = useState(false);
   const [lightboxIdx, setLightboxIdx] = useState(null);
   const [touchStart, setTouchStart] = useState(null);
+  const [brokenPhotos, setBrokenPhotos] = useState(() => new Set());
 
   useEffect(() => {
     if (car) trackCarView(car);
@@ -43,6 +44,8 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
 
   const isFav = favs.includes(car.id);
   const otherCars = cars.filter(c => c.type === car.type && c.id !== car.id).slice(0, 4);
+  const currentPhotoBroken = brokenPhotos.has(photoIdx);
+  const markPhotoBroken = (index) => setBrokenPhotos(current => new Set(current).add(index));
 
   const Gallery = () => (
     <div style={{ background: 'var(--at-bg-2)', position: 'relative' }}>
@@ -79,12 +82,52 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
         }}
         style={{ aspectRatio: '4/3', overflow: 'hidden', border: 'none', padding: 0, width: '100%', background: 'transparent', cursor: 'zoom-in', display: 'block', touchAction: 'pan-y' }}
       >
-        <img
-          src={car.photoUrls[photoIdx]}
-          alt={`${car.brand} ${car.model}`}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
+        {currentPhotoBroken ? (
+          <div style={{
+            width: '100%',
+            height: '100%',
+            display: 'grid',
+            placeItems: 'center',
+            background: 'linear-gradient(135deg, var(--at-bg-2), var(--at-surface))',
+            color: 'var(--at-ink-2)',
+            padding: 24,
+            textAlign: 'center',
+          }}>
+            <div>
+              <div style={{ fontFamily: 'var(--at-display)', fontSize: 28, fontWeight: 800, color: 'var(--at-ink)', letterSpacing: '-.02em' }}>
+                {car.brand} {car.model}
+              </div>
+              <div style={{ marginTop: 6, fontSize: 13, color: 'var(--at-ink-3)' }}>
+                Foto no disponible
+              </div>
+            </div>
+          </div>
+        ) : (
+          <img
+            src={car.photoUrls[photoIdx]}
+            alt={`${car.brand} ${car.model}`}
+            onError={() => markPhotoBroken(photoIdx)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        )}
       </button>
+
+      <div style={{
+        position: 'absolute',
+        right: 14,
+        bottom: car.photoUrls.length > 1 ? 66 : 14,
+        zIndex: 8,
+        padding: '7px 10px',
+        borderRadius: 999,
+        background: 'rgba(15,23,42,.76)',
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: 800,
+        backdropFilter: 'blur(10px)',
+        pointerEvents: 'none',
+      }}>
+        Tocar para ampliar · {photoIdx + 1}/{car.photoUrls.length}
+      </div>
 
       {car.photoUrls.length > 1 && (
         <div style={{ display: 'flex', gap: 6, padding: '8px 14px', overflowX: 'auto' }} className="hide-scroll">
@@ -96,7 +139,13 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
                 borderColor: i === photoIdx ? 'var(--at-accent)' : 'transparent',
                 padding: 0, cursor: 'pointer',
               }}>
-              <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {brokenPhotos.has(i) ? (
+                <span style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', background: 'var(--at-bg-2)', color: 'var(--at-ink-3)', fontSize: 10, fontWeight: 800 }}>
+                  Sin foto
+                </span>
+              ) : (
+                <img src={url} alt="" onError={() => markPhotoBroken(i)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              )}
             </button>
           ))}
         </div>
@@ -147,13 +196,13 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--at-accent)', letterSpacing: '-.01em' }}>
-                  Financiá en cuotas
+                  Ver opciones de financiación
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--at-ink-2)', marginTop: 2 }}>
-                  Calculá tu cuota mensual con CreditCar
+                  Elegí anticipo, compará cuotas y consultá fácil.
                 </div>
               </div>
-              <span style={{ fontSize: 16, color: 'var(--at-accent)', opacity: .6, flexShrink: 0 }}>→</span>
+              <span style={{ fontSize: 12, color: 'var(--at-accent)', fontWeight: 900, flexShrink: 0 }}>Ver cuotas</span>
             </button>
           )}
         </div>

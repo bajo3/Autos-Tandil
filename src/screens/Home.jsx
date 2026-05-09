@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { CARS as MOCK_CARS, TYPES as FALLBACK_TYPES } from '../data/cars';
 import { buildWhatsapp, fmtShort } from '../lib/utils';
 import { ATLogo } from '../components/ATLogo';
@@ -43,6 +44,7 @@ function CategoryIcon({ type }) {
 
 export default function Home({ favs, onFav, recents, cars = MOCK_CARS }) {
   const navigate = useNavigate();
+  const [heroSearch, setHeroSearch] = useState('');
   const types = [...new Set(cars.map(c => c.type).filter(Boolean))];
   const availableTypes = types.length ? types : FALLBACK_TYPES;
   const featured = cars.filter(c => c.badges.includes('destacado')).slice(0, 6);
@@ -118,23 +120,41 @@ export default function Home({ favs, onFav, recents, cars = MOCK_CARS }) {
               </p>
 
               {/* SEARCH */}
-              <div onClick={() => navigate('/catalogo')}
+              <form
+                onSubmit={event => {
+                  event.preventDefault();
+                  navigate('/catalogo', { state: heroSearch.trim() ? { q: heroSearch.trim() } : {} });
+                }}
                 style={{
                   marginTop: 22, display: 'flex', alignItems: 'center', gap: 10,
                   background: '#fff', color: 'var(--at-ink)',
                   padding: '13px 16px', borderRadius: 999,
-                  boxShadow: '0 12px 30px -10px rgba(0,0,0,.35)', cursor: 'pointer',
+                  boxShadow: '0 12px 30px -10px rgba(0,0,0,.35)',
                 }}>
                 <IconSearch size={18} sw={1.8} stroke="var(--at-ink-2)" />
-                <span style={{ flex: 1, fontSize: 13.5, color: 'var(--at-ink-2)' }}>
-                  Buscar marca, modelo, año…
-                </span>
-                <span style={{
+                <input
+                  value={heroSearch}
+                  onChange={event => setHeroSearch(event.target.value)}
+                  placeholder="Buscar marca, modelo o año"
+                  style={{
+                    flex: 1,
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    fontSize: 13.5,
+                    color: 'var(--at-ink)',
+                    minWidth: 0,
+                  }}
+                />
+                <button type="submit" style={{
                   padding: '5px 12px', borderRadius: 999,
                   background: 'var(--at-accent)', color: '#fff',
-                  fontSize: 11.5, fontWeight: 600,
-                }}>Buscar</span>
-              </div>
+                  fontSize: 11.5, fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}>Buscar</button>
+              </form>
 
               {/* stats */}
               <div style={{

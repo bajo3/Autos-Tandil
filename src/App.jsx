@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Splash } from './components/Splash';
 import { useFavorites } from './hooks/useFavorites';
@@ -63,10 +63,11 @@ export default function App() {
     } catch { /* ignore */ }
     return true;
   });
+  const handleSplashDone = useCallback(() => setSplashDone(true), []);
 
   return (
     <>
-      {!splashDone && <Splash onDone={() => setSplashDone(true)} />}
+      {!splashDone && <Splash onDone={handleSplashDone} />}
       <ScrollToTop />
       <AnalyticsTracker />
       <DesktopNav favCount={favs.length} />

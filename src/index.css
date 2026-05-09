@@ -114,6 +114,12 @@ input[type="range"]::-moz-range-thumb {
 
 ::selection { background: var(--at-accent); color: #fff; }
 
+@media (min-width: 768px) {
+  .catalog-mobile-sort {
+    display: none !important;
+  }
+}
+
 /* ─── Splash & modal animations ─── */
 @keyframes splashLogoIn {
   from { opacity: 0; transform: scale(.72) translateY(18px); }
