@@ -182,9 +182,3 @@
     border-right-color: var(--border);
   }
 }
-
-@media (max-width: 720px) {
-  .image-lightbox-nav {
-    display: none !important;
-  }
-}

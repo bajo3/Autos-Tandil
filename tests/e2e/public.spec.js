@@ -69,4 +69,16 @@ test.describe('public smoke tests', () => {
     await expect(page).toHaveURL(/\/auto\//);
     await page.waitForFunction(() => window.scrollY === 0);
   });
+
+  test('mobile image lightbox uses gestures without previous or next buttons', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/catalogo');
+    await page.getByTestId('car-card').first().click();
+    await expect(page).toHaveURL(/\/auto\//);
+
+    await page.locator('[data-testid="detail-main-image"]:visible').first().click();
+    await expect(page.getByTestId('image-lightbox')).toBeVisible();
+    await expect(page.getByRole('button', { name: /anterior/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /siguiente/i })).toHaveCount(0);
+  });
 });

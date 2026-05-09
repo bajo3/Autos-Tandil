@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const btn = {
   border: 'none',
@@ -15,11 +15,20 @@ const btn = {
 export function ImageLightbox({ images, index, onClose, onIndex }) {
   const [zoom, setZoom] = useState(1);
   const [touchStart, setTouchStart] = useState(null);
+  const [isMobileViewer, setIsMobileViewer] = useState(false);
   const gestureRef = useRef(null);
   const safeImages = images || [];
   const url = safeImages[index];
   const canPrev = index > 0;
   const canNext = index < safeImages.length - 1;
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 760px), (pointer: coarse)');
+    const sync = () => setIsMobileViewer(query.matches);
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
 
   const clampZoom = (value) => Math.min(4, Math.max(1, Number(value.toFixed(2))));
 
@@ -111,9 +120,11 @@ export function ImageLightbox({ images, index, onClose, onIndex }) {
         onTouchEnd={onTouchEnd}
         style={{ position: 'relative', minHeight: 0, display: 'grid', placeItems: 'center', overflow: 'auto', touchAction: 'none' }}
       >
-        <button type="button" className="image-lightbox-nav" onClick={() => go(-1)} disabled={!canPrev} style={{ ...btn, position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', opacity: canPrev ? 1 : .35, zIndex: 2 }}>
-          Anterior
-        </button>
+        {!isMobileViewer && (
+          <button type="button" onClick={() => go(-1)} disabled={!canPrev} style={{ ...btn, position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', opacity: canPrev ? 1 : .35, zIndex: 2 }}>
+            Anterior
+          </button>
+        )}
         <img
           src={url}
           alt=""
@@ -129,9 +140,11 @@ export function ImageLightbox({ images, index, onClose, onIndex }) {
             WebkitTouchCallout: 'none',
           }}
         />
-        <button type="button" className="image-lightbox-nav" onClick={() => go(1)} disabled={!canNext} style={{ ...btn, position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', opacity: canNext ? 1 : .35, zIndex: 2 }}>
-          Siguiente
-        </button>
+        {!isMobileViewer && (
+          <button type="button" onClick={() => go(1)} disabled={!canNext} style={{ ...btn, position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', opacity: canNext ? 1 : .35, zIndex: 2 }}>
+            Siguiente
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingTop: 10 }}>
