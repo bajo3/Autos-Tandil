@@ -47,8 +47,14 @@ test.describe('public smoke tests', () => {
     const whatsapp = page.locator('[data-testid="whatsapp-cta"]:visible').first();
     await expect(whatsapp).toBeVisible();
     await expect(whatsapp).toHaveAttribute('href', /wa\.me\/5492494621182/);
-    await whatsapp.click();
     await expect(page.locator('img').first()).toBeVisible();
+
+    await page.locator('[data-testid="detail-main-image"]:visible').first().click();
+    await expect(page.getByTestId('image-lightbox')).toBeVisible();
+    await page.getByRole('button', { name: /cerrar/i }).click();
+    await expect(page.getByTestId('image-lightbox')).toHaveCount(0);
+
+    await whatsapp.click();
   });
 
   test('home logo is visible', async ({ page }) => {

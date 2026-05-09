@@ -8,6 +8,7 @@ import { Badge } from '../components/Badge';
 import { CarCard } from '../components/CarCard';
 import { FinanceCalc } from '../components/FinanceCalc';
 import { SectionHeader } from '../components/SectionHeader';
+import { ImageLightbox } from '../components/ImageLightbox';
 import {
   IconHeart, IconWhatsapp, IconBack,
   IconGauge, IconCalendar, IconFuel, IconGear, IconCalc, IconLocation,
@@ -20,6 +21,8 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
   const car = cars.find(c => c.id === id);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [showCalc, setShowCalc] = useState(false);
+  const [lightboxIdx, setLightboxIdx] = useState(null);
+  const [touchStart, setTouchStart] = useState(null);
 
   useEffect(() => {
     if (car) trackCarView(car);
@@ -59,13 +62,29 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
         </button>
       </div>
 
-      <div style={{ aspectRatio: '4/3', overflow: 'hidden' }}>
+      <button
+        type="button"
+        data-testid="detail-main-image"
+        onClick={() => setLightboxIdx(photoIdx)}
+        onTouchStart={event => setTouchStart(event.touches[0].clientX)}
+        onTouchEnd={event => {
+          if (touchStart === null) return;
+          const delta = event.changedTouches[0].clientX - touchStart;
+          setTouchStart(null);
+          if (Math.abs(delta) < 42) return;
+          setPhotoIdx(current => {
+            if (delta < 0) return Math.min(car.photoUrls.length - 1, current + 1);
+            return Math.max(0, current - 1);
+          });
+        }}
+        style={{ aspectRatio: '4/3', overflow: 'hidden', border: 'none', padding: 0, width: '100%', background: 'transparent', cursor: 'zoom-in', display: 'block', touchAction: 'pan-y' }}
+      >
         <img
           src={car.photoUrls[photoIdx]}
           alt={`${car.brand} ${car.model}`}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
-      </div>
+      </button>
 
       {car.photoUrls.length > 1 && (
         <div style={{ display: 'flex', gap: 6, padding: '8px 14px', overflowX: 'auto' }} className="hide-scroll">
@@ -353,6 +372,14 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
       </div>
 
       {showCalc && <FinanceCalc car={car} onClose={() => setShowCalc(false)} />}
+      {lightboxIdx !== null && (
+        <ImageLightbox
+          images={car.photoUrls}
+          index={lightboxIdx}
+          onClose={() => setLightboxIdx(null)}
+          onIndex={setLightboxIdx}
+        />
+      )}
     </div>
   );
 }
