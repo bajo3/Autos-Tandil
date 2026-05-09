@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 const btn = {
   border: 'none',
@@ -15,10 +15,19 @@ const btn = {
 export function ImageLightbox({ images, index, onClose, onIndex }) {
   const [zoom, setZoom] = useState(1);
   const [touchStart, setTouchStart] = useState(null);
+  const gestureRef = useRef(null);
   const safeImages = images || [];
   const url = safeImages[index];
   const canPrev = index > 0;
   const canNext = index < safeImages.length - 1;
+
+  const clampZoom = (value) => Math.min(4, Math.max(1, Number(value.toFixed(2))));
+
+  const getTouchDistance = (touches) => {
+    const [first, second] = touches;
+    if (!first || !second) return 0;
+    return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
+  };
 
   const go = (direction) => {
     const nextIndex = index + direction;
@@ -27,11 +36,42 @@ export function ImageLightbox({ images, index, onClose, onIndex }) {
     onIndex(nextIndex);
   };
 
+  const onTouchStart = (event) => {
+    if (event.touches.length >= 2) {
+      gestureRef.current = {
+        type: 'pinch',
+        distance: getTouchDistance(event.touches),
+        zoom,
+      };
+      setTouchStart(null);
+      return;
+    }
+
+    gestureRef.current = { type: 'swipe' };
+    setTouchStart(event.touches[0].clientX);
+  };
+
+  const onTouchMove = (event) => {
+    if (event.touches.length < 2 || gestureRef.current?.type !== 'pinch') return;
+    event.preventDefault();
+    const nextDistance = getTouchDistance(event.touches);
+    if (!gestureRef.current.distance || !nextDistance) return;
+    const scale = nextDistance / gestureRef.current.distance;
+    setZoom(clampZoom(gestureRef.current.zoom * scale));
+  };
+
   const onTouchEnd = (event) => {
+    if (gestureRef.current?.type === 'pinch') {
+      if (event.touches.length < 2) gestureRef.current = null;
+      return;
+    }
+
     if (touchStart === null) return;
     const delta = event.changedTouches[0].clientX - touchStart;
     setTouchStart(null);
+    gestureRef.current = null;
     if (Math.abs(delta) < 42) return;
+    if (zoom > 1.05) return;
     go(delta < 0 ? 1 : -1);
   };
 
@@ -58,19 +98,20 @@ export function ImageLightbox({ images, index, onClose, onIndex }) {
           {index + 1} / {safeImages.length}
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <button type="button" style={btn} onClick={() => setZoom(z => Math.max(1, Number((z - .25).toFixed(2))))}>- Zoom</button>
+          <button type="button" style={btn} onClick={() => setZoom(z => clampZoom(z - .25))}>- Zoom</button>
           <button type="button" style={btn} onClick={() => setZoom(1)}>100%</button>
-          <button type="button" style={btn} onClick={() => setZoom(z => Math.min(3, Number((z + .25).toFixed(2))))}>+ Zoom</button>
+          <button type="button" style={btn} onClick={() => setZoom(z => clampZoom(z + .25))}>+ Zoom</button>
           <button type="button" style={btn} onClick={onClose}>Cerrar</button>
         </div>
       </div>
 
       <div
-        onTouchStart={event => setTouchStart(event.touches[0].clientX)}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        style={{ position: 'relative', minHeight: 0, display: 'grid', placeItems: 'center', overflow: 'auto', touchAction: 'pan-y' }}
+        style={{ position: 'relative', minHeight: 0, display: 'grid', placeItems: 'center', overflow: 'auto', touchAction: 'none' }}
       >
-        <button type="button" onClick={() => go(-1)} disabled={!canPrev} style={{ ...btn, position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', opacity: canPrev ? 1 : .35, zIndex: 2 }}>
+        <button type="button" className="image-lightbox-nav" onClick={() => go(-1)} disabled={!canPrev} style={{ ...btn, position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', opacity: canPrev ? 1 : .35, zIndex: 2 }}>
           Anterior
         </button>
         <img
@@ -82,16 +123,20 @@ export function ImageLightbox({ images, index, onClose, onIndex }) {
             width: zoom === 1 ? 'auto' : `${zoom * 100}%`,
             borderRadius: 12,
             boxShadow: '0 24px 80px rgba(0,0,0,.45)',
+            transition: 'width .16s ease, max-width .16s ease',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none',
           }}
         />
-        <button type="button" onClick={() => go(1)} disabled={!canNext} style={{ ...btn, position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', opacity: canNext ? 1 : .35, zIndex: 2 }}>
+        <button type="button" className="image-lightbox-nav" onClick={() => go(1)} disabled={!canNext} style={{ ...btn, position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', opacity: canNext ? 1 : .35, zIndex: 2 }}>
           Siguiente
         </button>
       </div>
 
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingTop: 10 }}>
         {safeImages.map((item, itemIndex) => (
-          <button key={item} type="button" onClick={() => { setZoom(1); onIndex(itemIndex); }} style={{ flex: '0 0 72px', height: 54, borderRadius: 8, overflow: 'hidden', border: '2px solid ' + (itemIndex === index ? '#fff' : 'transparent'), padding: 0, background: 'rgba(255,255,255,.12)' }}>
+          <button key={`${item}-${itemIndex}`} type="button" onClick={() => { setZoom(1); onIndex(itemIndex); }} style={{ flex: '0 0 72px', height: 54, borderRadius: 8, overflow: 'hidden', border: '2px solid ' + (itemIndex === index ? '#fff' : 'transparent'), padding: 0, background: 'rgba(255,255,255,.12)' }}>
             <img src={item} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </button>
         ))}
