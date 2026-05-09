@@ -71,7 +71,7 @@ const safeFileName = (name) => name
   .replace(/[^a-z0-9.]+/g, '-')
   .replace(/(^-|-$)/g, '');
 
-function ImageCard({ url, index, count, broken, onBroken, onSetCover, onMove, onRemove }) {
+function ImageCard({ url, index, count, broken, onBroken, onSetCover, onMove, onRemove, onOpen }) {
   const isCover = index === 0;
 
   return (
@@ -82,7 +82,12 @@ function ImageCard({ url, index, count, broken, onBroken, onSetCover, onMove, on
       background: 'var(--at-surface)',
       boxShadow: isCover ? '0 0 0 2px rgba(15,23,42,.08)' : 'none',
     }}>
-      <div style={{ position: 'relative', aspectRatio: '4/3', background: 'var(--at-bg-2)' }}>
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Abrir imagen ${index + 1}`}
+        style={{ position: 'relative', aspectRatio: '4/3', background: 'var(--at-bg-2)', border: 'none', padding: 0, width: '100%', cursor: 'zoom-in', display: 'block' }}
+      >
         {broken ? (
           <div style={{
             height: '100%',
@@ -132,7 +137,7 @@ function ImageCard({ url, index, count, broken, onBroken, onSetCover, onMove, on
         }}>
           {index + 1}/{count}
         </span>
-      </div>
+      </button>
 
       <div style={{ padding: 9, display: 'grid', gap: 8 }}>
         <div style={{
@@ -163,6 +168,120 @@ function ImageCard({ url, index, count, broken, onBroken, onSetCover, onMove, on
   );
 }
 
+function ImageLightbox({ images, index, onClose, onIndex }) {
+  const [zoom, setZoom] = useState(1);
+  const [touchStart, setTouchStart] = useState(null);
+  const url = images[index];
+  const canPrev = index > 0;
+  const canNext = index < images.length - 1;
+
+  const go = (direction) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= images.length) return;
+    setZoom(1);
+    onIndex(nextIndex);
+  };
+
+  const onTouchEnd = (event) => {
+    if (touchStart === null) return;
+    const delta = event.changedTouches[0].clientX - touchStart;
+    setTouchStart(null);
+    if (Math.abs(delta) < 42) return;
+    if (delta < 0) go(1);
+    else go(-1);
+  };
+
+  return (
+    <div
+      data-testid="image-lightbox"
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 200,
+        background: 'rgba(2,6,23,.92)',
+        display: 'grid',
+        gridTemplateRows: 'auto 1fr auto',
+        padding: 14,
+        color: '#fff',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+        <div style={{ fontFamily: 'var(--at-mono)', fontSize: 12, letterSpacing: '.08em' }}>
+          {index + 1} / {images.length}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button type="button" style={ghostButton} onClick={() => setZoom(z => Math.max(1, Number((z - .25).toFixed(2))))}>- Zoom</button>
+          <button type="button" style={ghostButton} onClick={() => setZoom(1)}>100%</button>
+          <button type="button" style={ghostButton} onClick={() => setZoom(z => Math.min(3, Number((z + .25).toFixed(2))))}>+ Zoom</button>
+          <button type="button" style={{ ...ghostButton, background: '#fff' }} onClick={onClose}>Cerrar</button>
+        </div>
+      </div>
+
+      <div
+        onTouchStart={event => setTouchStart(event.touches[0].clientX)}
+        onTouchEnd={onTouchEnd}
+        style={{
+          position: 'relative',
+          minHeight: 0,
+          display: 'grid',
+          placeItems: 'center',
+          overflow: 'auto',
+          touchAction: 'pan-y',
+        }}
+      >
+        <button type="button" onClick={() => go(-1)} disabled={!canPrev} style={{
+          ...ghostButton,
+          position: 'absolute',
+          left: 4,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          opacity: canPrev ? 1 : .35,
+          zIndex: 2,
+        }}>Anterior</button>
+        <img
+          src={url}
+          alt=""
+          style={{
+            maxWidth: zoom === 1 ? '100%' : `${zoom * 100}%`,
+            maxHeight: zoom === 1 ? '100%' : 'none',
+            width: zoom === 1 ? 'auto' : `${zoom * 100}%`,
+            transformOrigin: 'center',
+            borderRadius: 12,
+            boxShadow: '0 24px 80px rgba(0,0,0,.45)',
+          }}
+        />
+        <button type="button" onClick={() => go(1)} disabled={!canNext} style={{
+          ...ghostButton,
+          position: 'absolute',
+          right: 4,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          opacity: canNext ? 1 : .35,
+          zIndex: 2,
+        }}>Siguiente</button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingTop: 10 }}>
+        {images.map((item, itemIndex) => (
+          <button key={item} type="button" onClick={() => { setZoom(1); onIndex(itemIndex); }} style={{
+            flex: '0 0 72px',
+            height: 54,
+            borderRadius: 8,
+            overflow: 'hidden',
+            border: '2px solid ' + (itemIndex === index ? '#fff' : 'transparent'),
+            padding: 0,
+            background: 'rgba(255,255,255,.12)',
+          }}>
+            <img src={item} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ImageManager({ images, onChange }) {
   const cleanValue = useMemo(() => cleanImages(images), [images]);
   const [singleUrl, setSingleUrl] = useState('');
@@ -171,6 +290,7 @@ export function ImageManager({ images, onChange }) {
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [brokenImages, setBrokenImages] = useState({});
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   const commit = (nextImages) => {
     onChange(cleanImages(nextImages));
@@ -255,6 +375,7 @@ export function ImageManager({ images, onChange }) {
         .from(storageBucket)
         .upload(path, file, {
           cacheControl: '3600',
+          // Uploads keep the original file bytes: no client-side resize, compression, or quality loss.
           upsert: false,
           contentType: file.type,
         });
@@ -354,6 +475,7 @@ export function ImageManager({ images, onChange }) {
               onSetCover={() => setCover(index)}
               onMove={(direction) => move(index, direction)}
               onRemove={() => removeAt(index)}
+              onOpen={() => setLightboxIndex(index)}
             />
           ))}
         </div>
@@ -416,6 +538,15 @@ export function ImageManager({ images, onChange }) {
           </div>
         </div>
       </details>
+
+      {lightboxIndex !== null && cleanValue[lightboxIndex] && (
+        <ImageLightbox
+          images={cleanValue}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onIndex={setLightboxIndex}
+        />
+      )}
     </section>
   );
 }

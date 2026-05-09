@@ -12,6 +12,7 @@
     "supabase:enrich-images": "node scripts/enrich-car-images.mjs",
     "supabase:check-storage": "node scripts/check-storage-bucket.mjs",
     "supabase:create-storage": "node scripts/create-storage-bucket.mjs",
+    "supabase:create-storage-policies": "node scripts/create-storage-policies.mjs",
     "supabase:apply-analytics": "node scripts/apply-analytics-migration.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",

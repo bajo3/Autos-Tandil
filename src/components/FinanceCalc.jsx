@@ -85,11 +85,15 @@ export function FinanceCalc({ car, onClose }) {
   useEffect(() => {
     if (!debouncedLoan || !car.year) return;
     let cancelled = false;
-    setLoading(true);
-    setError(false);
-    fetchCreditCar(debouncedLoan, car.year)
+    Promise.resolve()
+      .then(() => {
+        if (cancelled) return null;
+        setLoading(true);
+        setError(false);
+        return fetchCreditCar(debouncedLoan, car.year);
+      })
       .then(data => {
-        if (cancelled) return;
+        if (cancelled || !data) return;
         setPlans(data);
         setLoading(false);
       })

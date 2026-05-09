@@ -49,6 +49,10 @@ test.describe('admin', () => {
 
     await expect(page.getByTestId('image-card')).toHaveCount(3);
     await expect(page.getByTestId('image-card').first()).toContainText('Portada');
+    await page.getByTestId('image-card').first().locator('button[aria-label^="Abrir imagen"]').click();
+    await expect(page.getByTestId('image-lightbox')).toBeVisible();
+    await page.getByRole('button', { name: /cerrar/i }).click();
+    await expect(page.getByTestId('image-lightbox')).toHaveCount(0);
 
     await page.getByTestId('image-card').nth(1).getByTestId('image-set-cover').click();
     await expect(page.getByTestId('image-card').first()).toContainText('Portada');

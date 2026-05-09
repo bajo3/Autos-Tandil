@@ -23,7 +23,8 @@ El upload usa el bucket `autos-images` y guarda las public URLs resultantes en `
 
 1. Configurar `VITE_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en `.env`.
 2. Ejecutar `npm run supabase:create-storage`.
-3. Verificar con `npm run supabase:check-storage`.
+3. Ejecutar `npm run supabase:create-storage-policies`.
+4. Verificar con `npm run supabase:check-storage`.
 
 `SUPABASE_SERVICE_ROLE_KEY` es solo para scripts Node locales/CI. Nunca debe importarse desde frontend ni subirse a git. Para produccion conviene reemplazar el admin temporal por Supabase Auth, RLS y policies mas estrictas por usuario/rol.
 
@@ -43,6 +44,7 @@ Limitacion actual: al quitar una imagen desde el admin solo se elimina del array
 - `npm run supabase:setup`
 - `npm run supabase:check-storage`
 - `npm run supabase:create-storage`
+- `npm run supabase:create-storage-policies`
 - `npm run supabase:apply-analytics`
 - `npm run test:e2e`
 
