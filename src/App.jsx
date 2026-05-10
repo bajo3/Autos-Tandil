@@ -77,7 +77,7 @@ export default function App() {
         <Route path="/auto/:id" element={<DetalleWrapper favs={favs} onFav={toggle} pushRecent={pushRecent} cars={inventory.cars} />} />
         <Route path="/favoritos" element={<Favoritos favs={favs} onFav={toggle} cars={inventory.cars} />} />
         <Route path="/vender" element={<Vender />} />
-        <Route path="/subastas" element={<Subastas />} />
+        <Route path="/subastas" element={<Subastas cars={inventory.cars} />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin/login" element={<Admin />} />
         <Route path="/admin/autos" element={<Admin />} />
