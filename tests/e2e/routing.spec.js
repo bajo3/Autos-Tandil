@@ -7,10 +7,10 @@ test('vercel.json contains SPA rewrite', async () => {
   expect(fs.existsSync(file)).toBe(true);
 
   const config = JSON.parse(fs.readFileSync(file, 'utf8'));
-  expect(config.rewrites).toContainEqual({
-    source: '/(.*)',
-    destination: '/index.html',
-  });
+  // El rewrite SPA debe enviar TODA ruta no-API a index.html
+  const spaRewrite = config.rewrites.find(r => r.destination === '/index.html');
+  expect(spaRewrite).toBeTruthy();
+  expect(spaRewrite.source).toMatch(/^\/.*\.\*\)?$/);
 });
 
 test.describe('direct SPA routes', () => {

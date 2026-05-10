@@ -83,6 +83,7 @@ export default function App() {
         <Route path="/admin/autos" element={<Admin />} />
         <Route path="/admin/autos/nuevo" element={<Admin />} />
         <Route path="/admin/autos/:id/editar" element={<Admin />} />
+        <Route path="/admin/subastas" element={<Admin />} />
         <Route path="/admin/analytics" element={<Admin />} />
         <Route path="*" element={<Home favs={favs} onFav={toggle} recents={recents} cars={inventory.cars} />} />
       </Routes>

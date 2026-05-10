@@ -6,6 +6,7 @@ import { carToRow } from '../lib/carMapper';
 import { getAdminCredentials, isAdminSession, setAdminSession } from '../lib/adminAuth';
 import { fmtPrice, fmtKm } from '../lib/utils';
 import { ImageManager } from '../components/admin/ImageManager';
+import { AuctionsAdmin } from '../components/admin/AuctionsAdmin';
 import { ATLogo } from '../components/ATLogo';
 import { getAdminAnalytics } from '../services/analyticsService';
 
@@ -85,15 +86,19 @@ function Login({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     const credentials = getAdminCredentials();
-    if (user === credentials.user && password === credentials.password) {
-      setAdminSession(true);
-      onLogin();
+    if (user !== credentials.user || password !== credentials.password) {
+      setError('Usuario o clave incorrectos.');
       return;
     }
-    setError('Usuario o clave incorrectos.');
+    setAdminSession(true);
+    if (hasSupabaseConfig && user.includes('@')) {
+      try { await supabase.auth.signInWithPassword({ email: user, password }); }
+      catch { /* ignore: writes fallarán si no hay session, pero entra al panel */ }
+    }
+    onLogin();
   };
 
   return (
@@ -120,6 +125,7 @@ function AdminShell({ children, onLogout }) {
   const nav = [
     ['/admin', 'Dashboard'],
     ['/admin/autos', 'Autos'],
+    ['/admin/subastas', 'Subastas'],
     ['/admin/analytics', 'Analytics'],
   ];
   return (
@@ -444,6 +450,7 @@ export default function Admin() {
       {!configured && <div style={{ ...cardStyle, padding: 12, marginBottom: 14, fontSize: 13, color: '#92400e' }}>Fuente actual: {source}. Faltan variables Supabase, se muestran mocks.</div>}
       {(pathname === '/admin' || pathname === '/admin/login') && <Dashboard cars={cars} analytics={analytics} />}
       {pathname === '/admin/autos' && <AutosList cars={cars} loading={loading} onStatus={changeStatus} onDelete={setConfirmDelete} />}
+      {pathname === '/admin/subastas' && <AuctionsAdmin cars={cars} />}
       {pathname === '/admin/analytics' && <AnalyticsView analytics={analytics} />}
       {isForm && (
         <FormRoute
