@@ -1,3 +1,5 @@
+import { defaultUseTagsForType } from './vehicleUse';
+
 const photo = (id, w = 1200) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=70`;
 
@@ -35,6 +37,7 @@ const normalizePhotos = (row) => {
 
 export function normalizeCar(row) {
   const photos = normalizePhotos(row);
+  const type = row.type || 'Auto';
   return {
     id: row.id,
     brand: row.brand || '',
@@ -48,9 +51,10 @@ export function normalizeCar(row) {
     trans: row.trans || '',
     engine: row.engine || '',
     color: row.color || '',
-    type: row.type || 'Auto',
+    type,
     body: row.body || '',
     badges: Array.isArray(row.badges) ? row.badges.filter(Boolean) : [],
+    usageTags: Array.isArray(row.usage_tags) ? row.usage_tags.filter(Boolean) : defaultUseTagsForType(type),
     desc: row.desc || row.description || '',
     status: row.status || 'published',
     ...photos,
@@ -75,6 +79,7 @@ export function carToRow(car) {
     type: car.type,
     body: car.body,
     badges: car.badges || [],
+    usage_tags: car.usageTags || car.usage_tags || [],
     description: car.desc,
     images,
     status: car.status || 'draft',

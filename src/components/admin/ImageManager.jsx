@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { hasSupabaseConfig, supabase } from '../../lib/supabase';
 import { ImageLightbox } from '../ImageLightbox';
+import { ProgressiveImage } from '../ProgressiveImage';
 
 const urlPattern = /^https?:\/\/\S+\.\S+/i;
 const storageBucket = 'autos-images';
@@ -103,11 +104,11 @@ function ImageCard({ url, index, count, broken, onBroken, onSetCover, onMove, on
             No se pudo cargar la imagen
           </div>
         ) : (
-          <img
+          <ProgressiveImage
             src={url}
             alt=""
             onError={onBroken}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            style={{ width: '100%', height: '100%' }}
           />
         )}
         {isCover && (

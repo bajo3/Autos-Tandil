@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { fmtPrice } from '../lib/utils';
+import { FINANCE_MIN_DOWN_PCT, FINANCE_TERMS, fmtPrice, WA_NUMBER } from '../lib/utils';
 import { IconClose, IconCalc, IconWhatsapp } from './Icons';
 import { trackWhatsappClick } from '../services/analyticsService';
 
-const WA_NUMBER = '5492494621182';
-const FEATURED_PLAZOS = [12, 18, 24, 36];
-const QUICK_ADVANCES = [20, 30, 50, 70];
+const FEATURED_PLAZOS = FINANCE_TERMS;
+const QUICK_ADVANCES = [50, 60, 70, 80];
 
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
@@ -31,7 +30,7 @@ function PlanCard({ plan, selected, onSelect }) {
   return (
     <button
       type="button"
-      onClick={() => onSelect(plan.plazo)}
+      onClick={() => onSelect(Number(plan.plazo))}
       style={{
         padding: '15px 13px',
         borderRadius: 14,
@@ -119,14 +118,20 @@ function StepCard({ number, label }) {
 }
 
 export function FinanceCalc({ car, onClose }) {
-  const [pct, setPct] = useState(30);
+  const [pct, setPct] = useState(FINANCE_MIN_DOWN_PCT);
+  const [downPaymentInput, setDownPaymentInput] = useState('');
   const [plans, setPlans] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  const [selectedPlazo, setSelectedPlazo] = useState(24);
+  const [selectedPlazo, setSelectedPlazo] = useState(36);
 
-  const downPayment = Math.round((car.price || 0) * pct / 100);
+  const price = Number(car.price) || 0;
+  const minDownPayment = Math.round(price * FINANCE_MIN_DOWN_PCT / 100);
+  const typedDownPayment = Number(String(downPaymentInput).replace(/\D/g, '')) || 0;
+  const downPayment = downPaymentInput ? Math.max(minDownPayment, Math.min(price, typedDownPayment)) : Math.round(price * pct / 100);
+  const effectivePct = price ? Math.round((downPayment / price) * 100) : FINANCE_MIN_DOWN_PCT;
+  const typedBelowMin = downPaymentInput && typedDownPayment > 0 && typedDownPayment < minDownPayment;
   const loan = (car.price || 0) - downPayment;
   const debouncedLoan = useDebounce(loan, 600);
 
@@ -155,8 +160,10 @@ export function FinanceCalc({ car, onClose }) {
     return () => { cancelled = true; };
   }, [debouncedLoan, car.year]);
 
-  const featuredPlans = plans?.filter(plan => FEATURED_PLAZOS.includes(plan.plazo)) || [];
-  const selectedPlan = plans?.find(plan => plan.plazo === selectedPlazo);
+  const visiblePlans = plans?.filter(plan => FINANCE_TERMS.includes(Number(plan.plazo))) || [];
+  const featuredPlans = visiblePlans.filter(plan => FEATURED_PLAZOS.includes(Number(plan.plazo)));
+  const selectedPlan = visiblePlans.find(plan => Number(plan.plazo) === selectedPlazo) || visiblePlans[visiblePlans.length - 1];
+  const selectedTerm = selectedPlan?.plazo || selectedPlazo;
 
   const waHref = (() => {
     if (!selectedPlan) {
@@ -165,7 +172,7 @@ export function FinanceCalc({ car, onClose }) {
     }
 
     const cuota = fmtPrice(Math.round(+selectedPlan.cuota));
-    const msg = `Hola! Me interesa el ${car.brand} ${car.model} ${car.version || ''}. Quiero financiar con anticipo de ${fmtPrice(downPayment)} y ${selectedPlazo} cuotas de ${cuota} por mes. Me pueden confirmar disponibilidad?`;
+    const msg = `Hola! Me interesa el ${car.brand} ${car.model} ${car.version || ''}. Quiero financiar con anticipo de ${fmtPrice(downPayment)} y ${selectedTerm} cuotas de ${cuota} por mes. Me pueden confirmar disponibilidad?`;
     return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
   })();
 
@@ -306,15 +313,15 @@ export function FinanceCalc({ car, onClose }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 14 }}>
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--at-ink)', letterSpacing: '-.01em' }}>
-                      1. Cuanto entregas de anticipo
+                      1. Cuánto entregás de anticipo
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--at-ink-3)', marginTop: 3 }}>
-                      Move el control o toca un porcentaje.
+                      Financiamos hasta el 50% del valor publicado.
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontFamily: 'var(--at-display)', fontSize: 34, fontWeight: 800, letterSpacing: '-.04em', color: 'var(--at-accent)', lineHeight: 1 }}>
-                      {pct}%
+                      {effectivePct}%
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--at-ink-3)', marginTop: 2 }}>
                       {fmtPrice(downPayment)}
@@ -324,23 +331,70 @@ export function FinanceCalc({ car, onClose }) {
 
                 <input
                   type="range"
-                  min="20"
-                  max="70"
+                  min="50"
+                  max="80"
                   step="5"
-                  value={pct}
-                  onChange={event => setPct(+event.target.value)}
+                  value={effectivePct}
+                  onChange={event => {
+                    const nextPct = Number(event.target.value);
+                    setPct(nextPct);
+                    setDownPaymentInput(String(Math.round(price * nextPct / 100)));
+                  }}
                   style={{ width: '100%' }}
                 />
+                <label style={{
+                  display: 'grid',
+                  gap: 6,
+                  marginTop: 12,
+                  fontSize: 10,
+                  color: 'var(--at-ink-3)',
+                  fontFamily: 'var(--at-mono)',
+                  letterSpacing: '.11em',
+                  textTransform: 'uppercase',
+                }}>
+                  Cuánto querés entregar
+                  <input
+                    inputMode="numeric"
+                    aria-label="Cuánto querés entregar"
+                    value={downPaymentInput}
+                    onChange={event => setDownPaymentInput(event.target.value.replace(/\D/g, ''))}
+                    placeholder=""
+                    style={{
+                      width: '100%',
+                      border: `1px solid ${typedBelowMin ? '#f59e0b' : 'var(--at-border)'}`,
+                      background: 'var(--at-surface)',
+                      color: 'var(--at-ink)',
+                      borderRadius: 12,
+                      padding: '13px 14px',
+                      fontSize: 16,
+                      fontWeight: 800,
+                      fontFamily: 'var(--at-sans)',
+                      letterSpacing: 0,
+                      outline: 'none',
+                    }}
+                  />
+                </label>
+                <div style={{ marginTop: 7, fontSize: 12, color: 'var(--at-ink-3)' }}>
+                  Mínimo permitido para este auto: {fmtPrice(minDownPayment)}.
+                </div>
+                {typedBelowMin && (
+                  <div style={{ marginTop: 7, fontSize: 12, color: '#92400e', lineHeight: 1.45 }}>
+                    Para financiar como máximo el 50%, el anticipo mínimo es {fmtPrice(minDownPayment)}.
+                  </div>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 12 }}>
                   {QUICK_ADVANCES.map(option => (
                     <button
                       key={option}
                       type="button"
-                      onClick={() => setPct(option)}
+                      onClick={() => {
+                        setPct(option);
+                        setDownPaymentInput(String(Math.round(price * option / 100)));
+                      }}
                       style={{
-                        border: `1px solid ${pct === option ? 'var(--at-accent)' : 'var(--at-border)'}`,
-                        background: pct === option ? 'var(--at-accent-soft)' : 'var(--at-surface)',
-                        color: pct === option ? 'var(--at-accent)' : 'var(--at-ink-2)',
+                        border: `1px solid ${effectivePct === option ? 'var(--at-accent)' : 'var(--at-border)'}`,
+                        background: effectivePct === option ? 'var(--at-accent-soft)' : 'var(--at-surface)',
+                        color: effectivePct === option ? 'var(--at-accent)' : 'var(--at-ink-2)',
                         borderRadius: 999,
                         padding: '9px 8px',
                         fontWeight: 900,
@@ -417,7 +471,7 @@ export function FinanceCalc({ car, onClose }) {
                       <PlanCard
                         key={plan.plazo}
                         plan={plan}
-                        selected={selectedPlazo === plan.plazo}
+                        selected={selectedPlazo === Number(plan.plazo)}
                         onSelect={setSelectedPlazo}
                       />
                     ))
@@ -425,7 +479,7 @@ export function FinanceCalc({ car, onClose }) {
                 </div>
               </div>
 
-              {!loading && !error && plans && plans.length > 0 && (
+              {!loading && !error && visiblePlans.length > 0 && (
                 <div style={{ marginBottom: 22 }}>
                   {selectedPlan && (
                     <div style={{
@@ -449,7 +503,7 @@ export function FinanceCalc({ car, onClose }) {
                           </div>
                         </div>
                         <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 900 }}>
-                          {selectedPlazo} cuotas
+                          {selectedTerm} cuotas
                         </div>
                       </div>
                     </div>
@@ -483,13 +537,13 @@ export function FinanceCalc({ car, onClose }) {
 
                   {showAll && (
                     <div style={{ marginTop: 8, borderRadius: 12, border: '1px solid var(--at-border)', overflow: 'hidden' }}>
-                      {plans.map((plan, itemIndex) => {
-                        const isSelected = selectedPlazo === plan.plazo;
+                      {visiblePlans.map((plan, itemIndex) => {
+                        const isSelected = selectedPlazo === Number(plan.plazo);
                         return (
                           <button
                             key={plan.plazo}
                             type="button"
-                            onClick={() => setSelectedPlazo(plan.plazo)}
+                            onClick={() => setSelectedPlazo(Number(plan.plazo))}
                             style={{
                               width: '100%',
                               display: 'flex',
@@ -498,7 +552,7 @@ export function FinanceCalc({ car, onClose }) {
                               gap: 12,
                               padding: '12px 14px',
                               border: 'none',
-                              borderBottom: itemIndex < plans.length - 1 ? '1px solid var(--at-border)' : 'none',
+                              borderBottom: itemIndex < visiblePlans.length - 1 ? '1px solid var(--at-border)' : 'none',
                               background: isSelected ? 'var(--at-accent-soft)' : 'var(--at-surface)',
                               cursor: 'pointer',
                               transition: 'background .12s',

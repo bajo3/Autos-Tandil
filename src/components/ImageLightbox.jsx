@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ProgressiveImage } from './ProgressiveImage';
 
 const btn = {
   border: 'none',
@@ -125,20 +126,24 @@ export function ImageLightbox({ images, index, onClose, onIndex }) {
             Anterior
           </button>
         )}
-        <img
+        <ProgressiveImage
           src={url}
           alt=""
+          loading="eager"
+          objectFit="contain"
           style={{
-            maxWidth: zoom === 1 ? '100%' : `${zoom * 100}%`,
+            width: `${zoom * 100}%`,
+            height: `${zoom * 100}%`,
+            maxWidth: zoom === 1 ? '100%' : 'none',
             maxHeight: zoom === 1 ? '100%' : 'none',
-            width: zoom === 1 ? 'auto' : `${zoom * 100}%`,
             borderRadius: 12,
             boxShadow: '0 24px 80px rgba(0,0,0,.45)',
-            transition: 'width .16s ease, max-width .16s ease',
+            transition: 'width .16s ease, height .16s ease',
             userSelect: 'none',
             WebkitUserSelect: 'none',
             WebkitTouchCallout: 'none',
           }}
+          imgStyle={{ objectFit: 'contain' }}
         />
         {!isMobileViewer && (
           <button type="button" onClick={() => go(1)} disabled={!canNext} style={{ ...btn, position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', opacity: canNext ? 1 : .35, zIndex: 2 }}>
@@ -150,7 +155,7 @@ export function ImageLightbox({ images, index, onClose, onIndex }) {
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingTop: 10 }}>
         {safeImages.map((item, itemIndex) => (
           <button key={`${item}-${itemIndex}`} type="button" onClick={() => { setZoom(1); onIndex(itemIndex); }} style={{ flex: '0 0 72px', height: 54, borderRadius: 8, overflow: 'hidden', border: '2px solid ' + (itemIndex === index ? '#fff' : 'transparent'), padding: 0, background: 'rgba(255,255,255,.12)' }}>
-            <img src={item} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <ProgressiveImage src={item} alt="" style={{ width: '100%', height: '100%' }} />
           </button>
         ))}
       </div>

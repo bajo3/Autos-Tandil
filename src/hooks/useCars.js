@@ -3,7 +3,7 @@ import { CARS as MOCK_CARS } from '../data/cars';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { normalizeCar } from '../lib/carMapper';
 
-export function useCars({ includeDrafts = false } = {}) {
+export function useCars({ includeDrafts = false, includeSold = false } = {}) {
   const [remoteCars, setRemoteCars] = useState([]);
   const [loading, setLoading] = useState(hasSupabaseConfig);
   const [source, setSource] = useState(hasSupabaseConfig ? 'supabase' : 'mock');
@@ -23,7 +23,8 @@ export function useCars({ includeDrafts = false } = {}) {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!includeDrafts) query = query.eq('status', 'published');
+    if (!includeDrafts && includeSold) query = query.in('status', ['published', 'sold', 'reserved']);
+    else if (!includeDrafts) query = query.eq('status', 'published');
 
     const { data, error: queryError } = await query;
 
@@ -39,7 +40,7 @@ export function useCars({ includeDrafts = false } = {}) {
     }
 
     setLoading(false);
-  }, [includeDrafts]);
+  }, [includeDrafts, includeSold]);
 
   useEffect(() => {
     Promise.resolve().then(loadCars);

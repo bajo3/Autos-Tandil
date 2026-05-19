@@ -51,7 +51,7 @@ export function ProfileGate({ profile, onSave }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
-            <span style={label}>DNI</span>
+            <span style={label}>Documento</span>
             <input style={input} required inputMode="numeric" value={dni} onChange={(e) => setDni(e.target.value)} />
           </div>
           <div>

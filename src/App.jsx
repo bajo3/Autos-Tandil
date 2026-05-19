@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Splash } from './components/Splash';
 import { useFavorites } from './hooks/useFavorites';
@@ -11,10 +11,11 @@ import Home from './screens/Home';
 import Catalogo from './screens/Catalogo';
 import Detalle from './screens/Detalle';
 import Favoritos from './screens/Favoritos';
-import Vender from './screens/Vender';
-import Subastas from './screens/Subastas';
-import Admin from './screens/Admin';
-import { trackPageView } from './services/analyticsService';
+import { trackEvent, trackPageView } from './services/analyticsService';
+
+const Vender = lazy(() => import('./screens/Vender'));
+const SubastasPanel = lazy(() => import('./screens/SubastasPanel'));
+const Admin = lazy(() => import('./screens/Admin'));
 
 const NAV_ROUTES = ['/', '/catalogo', '/favoritos', '/subastas'];
 
@@ -51,9 +52,12 @@ function DetalleWrapper({ favs, onFav, pushRecent, cars }) {
 export default function App() {
   const { favs, toggle } = useFavorites();
   const { recents, push: pushRecent } = useRecents();
-  const inventory = useCars();
+  const inventory = useCars({ includeSold: true });
   const { pathname } = useLocation();
   const showNav = NAV_ROUTES.includes(pathname);
+  const availableCars = useMemo(() => inventory.cars.filter(car => !['sold', 'reserved', 'draft'].includes(car.status)), [inventory.cars]);
+  const publicCars = availableCars.length ? availableCars : inventory.cars;
+  const soldCars = useMemo(() => inventory.cars.filter(car => ['sold', 'reserved'].includes(car.status)), [inventory.cars]);
 
   // Show splash only once per browser session
   const [splashDone, setSplashDone] = useState(() => {
@@ -64,6 +68,11 @@ export default function App() {
     return true;
   });
   const handleSplashDone = useCallback(() => setSplashDone(true), []);
+  const handleFavorite = useCallback((id) => {
+    const car = inventory.cars.find(item => item.id === id);
+    trackEvent(favs.includes(id) ? 'favorite_removed' : 'favorite_added', { source: pathname, car });
+    toggle(id);
+  }, [favs, inventory.cars, pathname, toggle]);
 
   return (
     <>
@@ -71,22 +80,26 @@ export default function App() {
       <ScrollToTop />
       <AnalyticsTracker />
       <DesktopNav favCount={favs.length} />
-      <Routes>
-        <Route path="/" element={<Home favs={favs} onFav={toggle} recents={recents} cars={inventory.cars} />} />
-        <Route path="/catalogo" element={<Catalogo favs={favs} onFav={toggle} cars={inventory.cars} loadingCars={inventory.loading} source={inventory.source} />} />
-        <Route path="/auto/:id" element={<DetalleWrapper favs={favs} onFav={toggle} pushRecent={pushRecent} cars={inventory.cars} />} />
-        <Route path="/favoritos" element={<Favoritos favs={favs} onFav={toggle} cars={inventory.cars} />} />
-        <Route path="/vender" element={<Vender />} />
-        <Route path="/subastas" element={<Subastas cars={inventory.cars} />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/admin/login" element={<Admin />} />
-        <Route path="/admin/autos" element={<Admin />} />
-        <Route path="/admin/autos/nuevo" element={<Admin />} />
-        <Route path="/admin/autos/:id/editar" element={<Admin />} />
-        <Route path="/admin/subastas" element={<Admin />} />
-        <Route path="/admin/analytics" element={<Admin />} />
-        <Route path="*" element={<Home favs={favs} onFav={toggle} recents={recents} cars={inventory.cars} />} />
-      </Routes>
+      <Suspense fallback={<div className="skel" style={{ height: 3 }} />}>
+        <Routes>
+          <Route path="/" element={<Home favs={favs} onFav={handleFavorite} recents={recents} cars={publicCars} soldCars={soldCars} />} />
+          <Route path="/catalogo" element={<Catalogo favs={favs} onFav={handleFavorite} cars={publicCars} loadingCars={inventory.loading} source={inventory.source} />} />
+          <Route path="/auto/:id" element={<DetalleWrapper favs={favs} onFav={handleFavorite} pushRecent={pushRecent} cars={inventory.cars} />} />
+          <Route path="/favoritos" element={<Favoritos favs={favs} onFav={handleFavorite} cars={inventory.cars} />} />
+          <Route path="/vender" element={<Vender />} />
+          <Route path="/subastas" element={<SubastasPanel />} />
+          <Route path="/subastas/panel" element={<SubastasPanel />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/login" element={<Admin />} />
+          <Route path="/admin/autos" element={<Admin />} />
+          <Route path="/admin/autos/nuevo" element={<Admin />} />
+          <Route path="/admin/autos/:id/editar" element={<Admin />} />
+          <Route path="/admin/subastas" element={<Admin />} />
+          <Route path="/admin/analytics" element={<Admin />} />
+          <Route path="/admin/leads" element={<Admin />} />
+          <Route path="*" element={<Home favs={favs} onFav={handleFavorite} recents={recents} cars={publicCars} soldCars={soldCars} />} />
+        </Routes>
+      </Suspense>
       {showNav && <BottomNav favCount={favs.length} />}
     </>
   );

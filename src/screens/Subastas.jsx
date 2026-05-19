@@ -7,6 +7,7 @@ import { AppHeader } from '../components/AppHeader';
 import { SectionHeader } from '../components/SectionHeader';
 import { AuthModal } from '../components/AuthModal';
 import { ProfileGate } from '../components/ProfileGate';
+import { ProgressiveImage } from '../components/ProgressiveImage';
 import { useAuth } from '../hooks/useAuth';
 import {
   listPublicAuctions, listBids, getMyParticipation, requestParticipation,
@@ -49,6 +50,26 @@ function deriveStatus(auction, now) {
 
 function statusLabel(status) {
   return ({ live: 'En vivo', scheduled: 'Próxima', ended: 'Cerrada', cancelled: 'Cancelada' })[status] || status;
+}
+
+function depositLabel(status) {
+  return ({
+    pending: 'Seña pendiente',
+    authorized: 'Autorizado',
+    paid: 'Seña pagada',
+    refunded: 'Reintegrada',
+    forfeited: 'Cerrada',
+  })[status] || 'Pendiente';
+}
+
+function paymentLabel(status) {
+  return ({
+    pending: 'Pendiente',
+    approved: 'Aprobado',
+    rejected: 'Rechazado',
+    refunded: 'Reintegrado',
+    cancelled: 'Cancelado',
+  })[status] || status || 'Pendiente';
 }
 
 function nextMin(auction) {
@@ -114,21 +135,18 @@ function MiniSpec({ icon, label, value }) {
 }
 
 function LotImage({ auction, status, large = false }) {
-  const [broken, setBroken] = useState(false);
   const cover = auction.cover_url || auction.car?.photoUrls?.[0] || auction.car?.thumbUrl;
+  const fallback = (
+    <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', textAlign: 'center', background: 'linear-gradient(135deg, var(--at-bg-2), var(--at-surface))', color: 'var(--at-ink-2)', padding: 20 }}>
+      <div>
+        <div style={{ fontFamily: 'var(--at-display)', fontSize: large ? 30 : 18, fontWeight: 800, color: 'var(--at-ink)' }}>{auction.title}</div>
+        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--at-ink-3)' }}>Foto en preparación</div>
+      </div>
+    </div>
+  );
   return (
     <div style={{ position: 'relative', aspectRatio: large ? '16/10' : '4/3', overflow: 'hidden', background: large ? '#111827' : 'var(--at-bg-2)' }}>
-      {broken || !cover ? (
-        <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', textAlign: 'center', background: 'linear-gradient(135deg, var(--at-bg-2), var(--at-surface))', color: 'var(--at-ink-2)', padding: 20 }}>
-          <div>
-            <div style={{ fontFamily: 'var(--at-display)', fontSize: large ? 30 : 18, fontWeight: 800, color: 'var(--at-ink)' }}>{auction.title}</div>
-            <div style={{ marginTop: 6, fontSize: 12, color: 'var(--at-ink-3)' }}>Foto en preparación</div>
-          </div>
-        </div>
-      ) : (
-        <img src={cover} alt={auction.title} onError={() => setBroken(true)}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-      )}
+      <ProgressiveImage src={cover} alt={auction.title} loading={large ? 'eager' : 'lazy'} fallback={fallback} style={{ width: '100%', height: '100%', background: large ? '#111827' : 'var(--at-bg-2)' }} />
       <div style={{ position: 'absolute', inset: 0, background: large ? 'linear-gradient(180deg, rgba(15,23,42,0) 40%, rgba(15,23,42,.72) 100%)' : 'none', pointerEvents: 'none' }} />
       <span style={{
         position: 'absolute', top: 12, left: 12, display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -272,18 +290,23 @@ function BiddingPanel({
     </>
   );
 
-  // -- demo / mock --
+  // -- agenda / mock fallback --
   if (auction._mock) {
-    const wa = `https://wa.me/${AUCTION_NUMBER}?text=${encodeURIComponent(`Hola! Quiero saber cuándo arranca la subasta del ${auction.title}.`)}`;
+    const wa = `https://wa.me/${AUCTION_NUMBER}?text=${encodeURIComponent(`Hola! Quiero reservar lugar para la subasta del ${auction.title}.`)}`;
     return (
       <aside style={panelStyle}>
         {heading}
         <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--at-ink-2)', lineHeight: 1.5 }}>
-          Esta es una vista previa. Las subastas en vivo arrancan apenas habilitemos los primeros lotes. Dejá tu interés por WhatsApp y te avisamos.
+          Estos lotes ya están listos como agenda comercial. Reservá tu lugar por WhatsApp y un asesor valida identidad, seña y condiciones antes de habilitar la puja.
         </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
+          <Stat label="Base" value={fmtPrice(Number(auction.starting_price))} />
+          <Stat label="Seña" value={fmtPrice(Number(auction.deposit_amount))} />
+        </div>
         <a href={wa} target="_blank" rel="noopener noreferrer" style={waBtn}>
-          <IconWhatsapp size={18} fill="#fff" />Avisame cuando arranque
+          <IconWhatsapp size={18} fill="#fff" />Reservar participación
         </a>
+        <SafetyList items={['Validación manual por AutosTandil', 'Condiciones claras antes de señar', 'Cierre asistido con comprador y vendedor']} />
       </aside>
     );
   }
@@ -518,6 +541,114 @@ function DepositButton({ auctionId, amount }) {
   );
 }
 
+export function CustomerDashboard({
+  user, profile, auctions, activity, loading, onSaveProfile, onSelectAuction, onLoginClick,
+}) {
+  const profileComplete = profile && profile.full_name?.trim() && profile.dni?.trim() && profile.phone?.trim();
+  const participations = activity?.participations || [];
+  const payments = activity?.payments || [];
+  const auctionById = new Map(auctions.map(auction => [auction.id, auction]));
+  const paidDeposits = payments.filter(payment => payment.kind === 'deposit' && payment.status === 'approved').length;
+  const activeParticipations = participations.filter(item => ['pending', 'authorized', 'paid'].includes(item.deposit_status));
+  const nextParticipation = activeParticipations[0];
+  const nextAuction = nextParticipation ? auctionById.get(nextParticipation.auction_id) : null;
+
+  if (!user) {
+    return (
+      <section data-testid="auction-client-dashboard" style={{ padding: '28px 0 8px' }}>
+        <div style={{ background: 'var(--at-surface)', border: '1px solid var(--at-border)', borderRadius: 20, padding: 18, display: 'grid', gap: 12 }}>
+          <SectionHeader eyebrow="Mi panel" title="Entrá para seguir tus subastas" />
+          <p style={{ margin: 0, color: 'var(--at-ink-2)', fontSize: 13, lineHeight: 1.55 }}>
+            Desde tu panel vas a ver tus señas, habilitaciones, subastas abiertas y próximos pasos.
+          </p>
+          <button type="button" onClick={onLoginClick} style={{ ...primaryBtn, maxWidth: 260 }}>Ingresar / Crear cuenta</button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section data-testid="auction-client-dashboard" style={{ padding: '28px 0 8px' }}>
+      <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 14, flexWrap: 'wrap' }}>
+          <SectionHeader eyebrow="Mi panel" title={`Hola${profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}`} />
+          <div style={{ fontSize: 12, color: 'var(--at-ink-3)', fontFamily: 'var(--at-mono)' }}>{user.email}</div>
+        </div>
+
+        <div className="grid md:grid-cols-4" style={{ gap: 10 }}>
+          <Stat label="Datos" value={profileComplete ? 'Completos' : 'Pendientes'} highlight={!profileComplete} />
+          <Stat label="Participaciones" value={loading ? '...' : activeParticipations.length} />
+          <Stat label="Señas aprobadas" value={loading ? '...' : paidDeposits} />
+          <Stat label="Próximo paso" value={nextAuction ? 'Ofertar' : profileComplete ? 'Elegir lote' : 'Validarte'} />
+        </div>
+
+        {!profileComplete && (
+          <div className="lg:grid lg:grid-cols-[.9fr_1.1fr] lg:gap-14 lg:items-start" style={{ background: 'var(--at-surface)', border: '1px solid var(--at-border)', borderRadius: 20, padding: 16 }}>
+            <div>
+              <h3 style={{ margin: 0, fontFamily: 'var(--at-display)', fontSize: 24, color: 'var(--at-ink)' }}>Validá tu identidad</h3>
+              <p style={{ margin: '8px 0 0', color: 'var(--at-ink-2)', fontSize: 13, lineHeight: 1.55 }}>
+                Para poder reservar lugar, pagar una seña y ofertar necesitamos nombre, documento y teléfono. Es una validación privada de AutosTandil.
+              </p>
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <ProfileGate profile={profile} onSave={onSaveProfile} />
+            </div>
+          </div>
+        )}
+
+        <div className="lg:grid lg:grid-cols-[1.1fr_.9fr] lg:gap-12" style={{ gap: 12 }}>
+          <div style={{ background: 'var(--at-surface)', border: '1px solid var(--at-border)', borderRadius: 20, padding: 16 }}>
+            <h3 style={{ margin: 0, fontFamily: 'var(--at-display)', fontSize: 20, color: 'var(--at-ink)' }}>Tus subastas</h3>
+            {loading ? (
+              <div className="skel" style={{ height: 88, borderRadius: 12, marginTop: 12 }} />
+            ) : activeParticipations.length ? (
+              <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+                {activeParticipations.slice(0, 4).map(item => {
+                  const auction = auctionById.get(item.auction_id);
+                  return (
+                    <button key={item.id} type="button" onClick={() => auction && onSelectAuction(auction.id)}
+                      style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'center', border: '1px solid var(--at-border)', borderRadius: 14, padding: 12, background: 'var(--at-bg)', textAlign: 'left', cursor: auction ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+                      <span style={{ minWidth: 0 }}>
+                        <strong style={{ display: 'block', color: 'var(--at-ink)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{auction?.title || 'Subasta'}</strong>
+                        <span style={{ display: 'block', marginTop: 3, color: 'var(--at-ink-3)', fontSize: 11, fontFamily: 'var(--at-mono)' }}>{depositLabel(item.deposit_status)}</span>
+                      </span>
+                      <span style={{ color: 'var(--at-accent)', fontSize: 12, fontWeight: 900 }}>Ver</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ marginTop: 12, padding: 14, borderRadius: 14, background: 'var(--at-bg-2)', color: 'var(--at-ink-2)', fontSize: 13, lineHeight: 1.5 }}>
+                Todavía no reservaste participación. Elegí un lote y pedí habilitación para seguir el proceso desde acá.
+              </div>
+            )}
+          </div>
+
+          <div style={{ background: 'var(--at-surface)', border: '1px solid var(--at-border)', borderRadius: 20, padding: 16, marginTop: 12 }}>
+            <h3 style={{ margin: 0, fontFamily: 'var(--at-display)', fontSize: 20, color: 'var(--at-ink)' }}>Pagos y señas</h3>
+            {loading ? (
+              <div className="skel" style={{ height: 88, borderRadius: 12, marginTop: 12 }} />
+            ) : payments.length ? (
+              <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+                {payments.slice(0, 4).map(payment => (
+                  <div key={payment.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid var(--at-border)', fontSize: 13 }}>
+                    <span style={{ color: 'var(--at-ink-2)' }}>{payment.kind === 'deposit' ? 'Seña' : 'Pago final'} · {paymentLabel(payment.status)}</span>
+                    <strong style={{ color: 'var(--at-ink)' }}>{fmtPrice(Number(payment.amount))}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ marginTop: 12, padding: 14, borderRadius: 14, background: 'var(--at-bg-2)', color: 'var(--at-ink-2)', fontSize: 13, lineHeight: 1.5 }}>
+                Cuando pagues una seña por MercadoPago vas a ver el estado acá.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ----------------------------- main screen -----------------------------
 export default function Subastas({ cars = MOCK_CARS }) {
   const navigate = useNavigate();
@@ -630,9 +761,14 @@ export default function Subastas({ cars = MOCK_CARS }) {
     <div className="pb-[118px] md:pb-0">
       <AppHeader onBack={() => navigate('/')} title="Subastas"
         right={user ? (
-          <button onClick={signOut} style={{ background: 'none', border: 'none', color: 'var(--at-ink-2)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-            Salir
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => navigate('/subastas/panel')} style={{ background: 'var(--at-ink)', color: '#fff', border: 'none', borderRadius: 999, padding: '7px 12px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+              Mi panel
+            </button>
+            <button onClick={signOut} style={{ background: 'none', border: 'none', color: 'var(--at-ink-2)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              Salir
+            </button>
+          </div>
         ) : (
           <button onClick={() => setAuthOpen(true)} style={{ background: 'var(--at-ink)', color: '#fff', border: 'none', borderRadius: 999, padding: '7px 13px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
             Ingresar
@@ -640,10 +776,10 @@ export default function Subastas({ cars = MOCK_CARS }) {
         )} />
 
       <section style={{ background: 'var(--at-ink)', color: '#fff', position: 'relative', overflow: 'hidden' }}>
+        <ProgressiveImage src={heroBg} alt="" loading="eager" style={{ position: 'absolute', inset: 0, filter: 'saturate(.95)', background: 'var(--at-ink)' }} />
         <div style={{
           position: 'absolute', inset: 0,
-          background: `linear-gradient(90deg, rgba(15,23,42,.96) 0%, rgba(15,23,42,.82) 48%, rgba(15,23,42,.72) 100%)${heroBg ? `, url(${heroBg})` : ''}`,
-          backgroundSize: 'cover', backgroundPosition: 'center', filter: 'saturate(.95)',
+          background: 'linear-gradient(90deg, rgba(15,23,42,.96) 0%, rgba(15,23,42,.82) 48%, rgba(15,23,42,.72) 100%)',
         }} />
         <div style={{ ...pageWrap, position: 'relative', paddingTop: 34, paddingBottom: 34 }}>
           <div className="lg:grid lg:grid-cols-[1fr_460px] lg:gap-12 lg:items-center">
@@ -665,6 +801,18 @@ export default function Subastas({ cars = MOCK_CARS }) {
                 <TrustPill icon={<IconShield size={14} sw={2} />}>Seña reembolsable</TrustPill>
                 <TrustPill icon={<IconCar size={14} sw={2} />}>Autos verificados</TrustPill>
                 <TrustPill icon={<IconLocation size={14} sw={2} />}>Cierre local en Tandil</TrustPill>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 22 }}>
+                <button type="button" onClick={() => navigate('/subastas/panel')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: 'none', borderRadius: 999, padding: '12px 16px', background: '#fff', color: 'var(--at-ink)', fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Mi panel de subastas <IconArrowRight size={15} sw={2.4} />
+                </button>
+                {!user && (
+                  <button type="button" onClick={() => setAuthOpen(true)}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(255,255,255,.24)', borderRadius: 999, padding: '12px 16px', background: 'rgba(255,255,255,.1)', color: '#fff', fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Ingresar / Crear cuenta
+                  </button>
+                )}
               </div>
             </div>
 
@@ -718,7 +866,7 @@ export default function Subastas({ cars = MOCK_CARS }) {
       <main style={pageWrap}>
         <section className="lg:grid lg:grid-cols-[1fr_380px] lg:gap-8 lg:items-start" style={{ padding: '28px 0 8px' }}>
           <div>
-            <SectionHeader eyebrow="Lotes activos" title={selected._mock ? 'Vista previa de subastas' : 'Subastas curadas'} />
+            <SectionHeader eyebrow="Lotes activos" title={selected._mock ? 'Agenda de próximas subastas' : 'Subastas curadas'} />
             <div className="lg:grid lg:grid-cols-3" style={{ display: 'grid', gap: 14, marginTop: 16 }}>
               {auctions.map(a => (
                 <LotCard key={a.id} auction={a}
@@ -789,7 +937,11 @@ export default function Subastas({ cars = MOCK_CARS }) {
             <span style={{ display: 'block', fontSize: 10, color: 'rgba(255,255,255,.55)', fontFamily: 'var(--at-mono)', letterSpacing: '.1em', textTransform: 'uppercase' }}>Siguiente oferta</span>
             <strong style={{ display: 'block', marginTop: 2, fontSize: 16 }}>{fmtPrice(nextMin(selected))}</strong>
           </span>
-          {selected._mock || !user ? (
+          {selected._mock ? (
+            <a href={`https://wa.me/${AUCTION_NUMBER}?text=${encodeURIComponent(`Hola! Quiero reservar lugar para la subasta del ${selected.title}.`)}`} target="_blank" rel="noopener noreferrer" style={{ background: 'var(--at-accent)', color: '#fff', border: 'none', borderRadius: 999, padding: '10px 14px', fontWeight: 900, fontSize: 12, cursor: 'pointer', textDecoration: 'none' }}>
+              Reservar
+            </a>
+          ) : !user ? (
             <button onClick={() => setAuthOpen(true)} style={{ background: 'var(--at-accent)', color: '#fff', border: 'none', borderRadius: 999, padding: '10px 14px', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
               Participar
             </button>

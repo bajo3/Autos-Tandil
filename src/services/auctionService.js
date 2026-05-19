@@ -1,4 +1,10 @@
 import { supabase, hasSupabaseConfig } from '../lib/supabase';
+import { AUCTION_MIN_DEPOSIT } from '../lib/utils';
+
+const normalizeAuction = (auction) => ({
+  ...auction,
+  deposit_amount: Math.max(AUCTION_MIN_DEPOSIT, Number(auction.deposit_amount || 0)),
+});
 
 export async function listPublicAuctions() {
   if (!hasSupabaseConfig) return [];
@@ -8,7 +14,7 @@ export async function listPublicAuctions() {
     .neq('status', 'draft')
     .order('starts_at', { ascending: true });
   if (error) throw error;
-  return data || [];
+  return (data || []).map(normalizeAuction);
 }
 
 export async function listAllAuctions() {
@@ -16,7 +22,7 @@ export async function listAllAuctions() {
   const { data, error } = await supabase
     .from('auctions').select('*').order('created_at', { ascending: false });
   if (error) throw error;
-  return data || [];
+  return (data || []).map(normalizeAuction);
 }
 
 export async function getAuction(id) {
@@ -43,7 +49,28 @@ export async function getMyParticipation(auctionId, userId) {
     .from('auction_participants').select('*')
     .eq('auction_id', auctionId).eq('user_id', userId).maybeSingle();
   if (error) throw error;
-  return data;
+  return data ? normalizeAuction(data) : data;
+}
+
+export async function listMyAuctionActivity(userId) {
+  if (!hasSupabaseConfig || !userId) return { participations: [], payments: [] };
+
+  const [{ data: participations, error: partError }, { data: payments, error: paymentError }] = await Promise.all([
+    supabase
+      .from('auction_participants')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('payments')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+  ]);
+
+  if (partError) throw partError;
+  if (paymentError) throw paymentError;
+  return { participations: participations || [], payments: payments || [] };
 }
 
 export async function requestParticipation(auctionId, userId) {

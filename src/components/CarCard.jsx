@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { Badge } from './Badge';
 import { IconHeart, IconGauge, IconFuel, IconGear, IconChevron, IconCalc } from './Icons';
-import { fmtPrice, fmtKm } from '../lib/utils';
+import { estimateMonthlyPayment, fmtPrice, fmtKm } from '../lib/utils';
+import { ProgressiveImage } from './ProgressiveImage';
 
 const specStyle = {
   display: 'inline-flex',
@@ -19,10 +19,9 @@ const transLabel = (value) => {
 };
 
 export function CarCard({ car, onOpen, onFav, isFav, radius = 14 }) {
-  const [imageFailed, setImageFailed] = useState(false);
   const badges = car.badges || [];
   const extraBadges = Math.max(0, badges.length - 2);
-  const hasFinance = badges.includes('financia');
+  const estimatedMonthly = estimateMonthlyPayment(car.price);
 
   return (
     <article
@@ -58,7 +57,11 @@ export function CarCard({ car, onOpen, onFav, isFav, radius = 14 }) {
       }}
     >
       <div style={{ position: 'relative', aspectRatio: '4/3', overflow: 'hidden', background: 'var(--at-bg-2)' }}>
-        {imageFailed ? (
+        <ProgressiveImage
+          src={car.thumbUrl}
+          alt={`${car.brand} ${car.model}`}
+          style={{ width: '100%', height: '100%' }}
+          fallback={(
           <div style={{
             width: '100%',
             height: '100%',
@@ -78,15 +81,8 @@ export function CarCard({ car, onOpen, onFav, isFav, radius = 14 }) {
               </div>
             </div>
           </div>
-        ) : (
-          <img
-            src={car.thumbUrl}
-            alt={`${car.brand} ${car.model}`}
-            loading="lazy"
-            onError={() => setImageFailed(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-        )}
+          )}
+        />
         <div style={{ position: 'absolute', top: 10, left: 10, right: 44, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
           {badges.slice(0, 2).map(badge => <Badge key={badge} kind={badge} sm />)}
           {extraBadges > 0 && (
@@ -187,23 +183,21 @@ export function CarCard({ car, onOpen, onFav, isFav, radius = 14 }) {
               {fmtPrice(car.price)}
             </div>
           </div>
-          {hasFinance && (
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '5px 8px',
-              borderRadius: 999,
-              background: 'var(--at-accent-soft)',
-              color: 'var(--at-accent)',
-              fontSize: 10.5,
-              fontWeight: 800,
-              whiteSpace: 'nowrap',
-            }}>
-              <IconCalc size={11} sw={2} />
-              Cuotas
-            </span>
-          )}
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '5px 8px',
+            borderRadius: 999,
+            background: 'var(--at-accent-soft)',
+            color: 'var(--at-accent)',
+            fontSize: 10.5,
+            fontWeight: 800,
+            whiteSpace: 'nowrap',
+          }}>
+            <IconCalc size={11} sw={2} />
+            Desde {fmtPrice(estimatedMonthly)}
+          </span>
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>

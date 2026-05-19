@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CARS as MOCK_CARS, TYPES as FALLBACK_TYPES } from '../data/cars';
-import { buildWhatsapp, fmtShort } from '../lib/utils';
+import { AUCTION_MIN_DEPOSIT, buildWhatsapp, fmtShort } from '../lib/utils';
 import { ATLogo } from '../components/ATLogo';
 import { CarCard } from '../components/CarCard';
 import { SectionHeader } from '../components/SectionHeader';
+import { ProgressiveImage } from '../components/ProgressiveImage';
+import { BuyerAssistant } from '../components/BuyerAssistant';
+import { SearchAlertForm } from '../components/SearchAlertForm';
+import { listPublicAuctions } from '../services/auctionService';
+import { trackEvent } from '../services/analyticsService';
 import {
   IconSearch, IconCar, IconCheck, IconWhatsapp, IconChevron,
   IconLocation, IconShield, IconHandshake,
@@ -63,8 +68,6 @@ function CategoryIcon({ type }) {
 }
 
 function RecentMiniCard({ car, onOpen }) {
-  const [broken, setBroken] = useState(false);
-
   return (
     <button
       type="button"
@@ -84,13 +87,16 @@ function RecentMiniCard({ car, onOpen }) {
       }}
     >
       <div style={{ aspectRatio: '4/3', overflow: 'hidden', background: 'var(--at-bg-2)' }}>
-        {broken ? (
+        <ProgressiveImage
+          src={car.thumbUrl}
+          alt={`${car.brand} ${car.model}`}
+          style={{ width: '100%', height: '100%' }}
+          fallback={(
           <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: 'var(--at-ink-3)', fontSize: 11, fontWeight: 800 }}>
             Sin foto
           </div>
-        ) : (
-          <img src={car.thumbUrl} alt="" onError={() => setBroken(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        )}
+          )}
+        />
       </div>
       <div style={{ padding: '8px 10px 10px' }}>
         <div style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--at-display)', lineHeight: 1.15 }}>{car.brand} {car.model}</div>
@@ -116,9 +122,10 @@ function MobileCarouselShell({ children }) {
   );
 }
 
-export default function Home({ favs, onFav, recents, cars = MOCK_CARS }) {
+export default function Home({ favs, onFav, recents, cars = MOCK_CARS, soldCars = [] }) {
   const navigate = useNavigate();
   const [heroSearch, setHeroSearch] = useState('');
+  const [auctions, setAuctions] = useState([]);
   const types = [...new Set(cars.map(c => c.type).filter(Boolean))];
   const availableTypes = types.length ? types : FALLBACK_TYPES;
   const featured = cars.filter(c => c.badges.includes('destacado')).slice(0, 6);
@@ -126,14 +133,27 @@ export default function Home({ favs, onFav, recents, cars = MOCK_CARS }) {
   const recentCars = recents.map(id => cars.find(c => c.id === id)).filter(Boolean).slice(0, 8);
   const heroCar = featured[0] || cars[0] || MOCK_CARS[0];
 
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve()
+      .then(listPublicAuctions)
+      .then(items => { if (!cancelled) setAuctions(items.slice(0, 3)); })
+      .catch(() => { if (!cancelled) setAuctions([]); });
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div className="pb-[88px] md:pb-0">
       <section style={{ position: 'relative', background: 'var(--at-ink)', color: '#fff', overflow: 'hidden' }}>
+        <ProgressiveImage
+          src={heroCar.thumbUrl.replace('w=800', 'w=1400')}
+          alt=""
+          loading="eager"
+          style={{ position: 'absolute', inset: 0, background: 'var(--at-ink)' }}
+        />
         <div style={{
           position: 'absolute', inset: 0,
-          backgroundImage: `linear-gradient(180deg, rgba(15,23,42,.58) 0%, rgba(15,23,42,.9) 78%, var(--at-ink) 100%), url(${heroCar.thumbUrl.replace('w=800', 'w=1400')})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          background: 'linear-gradient(180deg, rgba(15,23,42,.58) 0%, rgba(15,23,42,.9) 78%, var(--at-ink) 100%)',
         }} />
 
         <div className="md:hidden" style={{
@@ -254,7 +274,12 @@ export default function Home({ favs, onFav, recents, cars = MOCK_CARS }) {
                   onClick={() => navigate(`/auto/${featured[0].id}`)}
                   style={{ borderRadius: 18, overflow: 'hidden', cursor: 'pointer', position: 'relative', boxShadow: '0 24px 60px -16px rgba(0,0,0,.5)' }}
                 >
-                  <img src={featured[0].photoUrls[0]} alt={`${featured[0].brand} ${featured[0].model}`} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
+                  <ProgressiveImage
+                    src={featured[0].photoUrls[0]}
+                    alt={`${featured[0].brand} ${featured[0].model}`}
+                    loading="eager"
+                    style={{ width: '100%', aspectRatio: '4/3' }}
+                  />
                   <div style={{
                     position: 'absolute',
                     bottom: 0,
@@ -362,6 +387,51 @@ export default function Home({ favs, onFav, recents, cars = MOCK_CARS }) {
         </div>
       </section>
 
+      <section style={{ padding: '28px 0 8px' }}>
+        <div style={pageWrap}>
+          <BuyerAssistant cars={cars} favs={favs} onFav={onFav} source="home" />
+        </div>
+      </section>
+
+      {auctions.length > 0 && (
+        <section style={{ padding: '28px 0 8px' }}>
+          <div style={pageWrap}>
+            <SectionHeader eyebrow="Subastas" title="Lotes con participación online" action={{ label: 'Entrar', onClick: () => navigate('/subastas') }} />
+            <div className="grid md:grid-cols-3" style={{ gap: 12, marginTop: 14 }}>
+              {auctions.map(auction => (
+                <button
+                  key={auction.id}
+                  type="button"
+                  onClick={() => {
+                    trackEvent('home_auction_open', { source: 'home', metadata: { auction_id: auction.id } });
+                    navigate('/subastas');
+                  }}
+                  style={{
+                    textAlign: 'left',
+                    border: '1px solid var(--at-border)',
+                    background: 'var(--at-surface)',
+                    borderRadius: 14,
+                    padding: 14,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <div style={{ fontFamily: 'var(--at-mono)', fontSize: 10, color: 'var(--at-accent)', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 900 }}>
+                    {auction.status === 'live' ? 'En vivo' : 'Próxima'}
+                  </div>
+                  <strong style={{ display: 'block', marginTop: 7, fontFamily: 'var(--at-display)', fontSize: 18, color: 'var(--at-ink)', lineHeight: 1.1 }}>
+                    {auction.title}
+                  </strong>
+                  <span style={{ display: 'block', marginTop: 8, color: 'var(--at-ink-2)', fontSize: 12 }}>
+                    Base {fmtShort(Number(auction.starting_price || 0))} / seña {fmtShort(Math.max(AUCTION_MIN_DEPOSIT, Number(auction.deposit_amount || 0)))}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {recentCars.length > 0 && (
         <section style={{ padding: '28px 0 8px' }}>
           <div style={pageWrap}>
@@ -402,6 +472,42 @@ export default function Home({ favs, onFav, recents, cars = MOCK_CARS }) {
               <CarCard key={car.id} car={car} onOpen={() => navigate(`/auto/${car.id}`)} onFav={onFav} isFav={favs.includes(car.id)} />
             ))}
           </div>
+        </div>
+      </section>
+
+      {soldCars.length > 0 && (
+        <section style={{ padding: '28px 0 8px' }}>
+          <div style={pageWrap}>
+            <SectionHeader eyebrow="Movimiento real" title="Vendidos recientemente" />
+            <div className="grid gap-3 md:grid-cols-3" style={{ marginTop: 14 }}>
+              {soldCars.slice(0, 3).map(car => (
+                <div key={car.id} style={{ position: 'relative' }}>
+                  <CarCard car={car} onOpen={() => navigate(`/auto/${car.id}`)} onFav={onFav} isFav={favs.includes(car.id)} />
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 14,
+                    background: 'rgba(15,23,42,.58)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: '#fff',
+                    pointerEvents: 'none',
+                    fontWeight: 900,
+                    fontSize: 18,
+                    fontFamily: 'var(--at-display)',
+                  }}>
+                    Vendido
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section style={{ padding: '28px 0 8px' }}>
+        <div style={pageWrap}>
+          <SearchAlertForm source="home" />
         </div>
       </section>
 

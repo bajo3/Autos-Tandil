@@ -6,8 +6,8 @@ test.describe('admin', () => {
     await page.goto('/admin');
     await expect(page.getByTestId('admin-login-form')).toBeVisible();
 
-    await page.locator('input[name="user"]').fill('admin');
-    await page.locator('input[name="password"]').fill('admin');
+    await page.locator('input[name="user"]').fill(process.env.VITE_ADMIN_USER || 'admin');
+    await page.locator('input[name="password"]').fill(process.env.VITE_ADMIN_PASSWORD || 'admin');
     await page.getByRole('button', { name: /entrar/i }).click();
     await expect(page.getByTestId('admin-dashboard')).toBeVisible();
     await expect(page.getByTestId('admin-car-form')).toHaveCount(0);

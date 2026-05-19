@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { collectCriticalConsole, expectNoCriticalConsole } from './helpers';
 
 test.describe('public smoke tests', () => {
-  for (const route of ['/', '/catalogo', '/favoritos', '/vender']) {
+  for (const route of ['/', '/catalogo', '/favoritos', '/vender', '/subastas', '/subastas/panel']) {
     test(`${route} renders without critical errors`, async ({ page }) => {
       const consoleMessages = collectCriticalConsole(page);
 
@@ -29,11 +29,54 @@ test.describe('public smoke tests', () => {
     await expect(page.getByText(/Aun no guardaste autos|Aún no guardaste autos/i)).toBeVisible();
   });
 
+  test('car photos show a loading treatment while image requests are slow', async ({ page }) => {
+    await page.route('**/*', async (route) => {
+      if (route.request().resourceType() === 'image') {
+        await new Promise(resolve => setTimeout(resolve, 700));
+      }
+      await route.continue();
+    });
+
+    await page.goto('/catalogo', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('.at-image-loading').first()).toBeVisible();
+  });
+
   test('sell page shows consignment CTA', async ({ page }) => {
     await page.goto('/vender');
 
     await expect(page.getByText(/consignaci/i).first()).toBeVisible();
     await expect(page.getByRole('link', { name: /whatsapp|contactar|quiero/i }).first()).toBeVisible();
+  });
+
+  test('auctions page renders fallback lots or controlled empty state', async ({ page }) => {
+    await page.goto('/subastas');
+
+    await expect(page.getByText(/Subastas/i).first()).toBeVisible();
+    await expect(page.locator('body')).not.toContainText('404: NOT_FOUND');
+    await expect(page.locator('body')).not.toContainText('Application error');
+  });
+
+  test('auction signup asks for identity document and redirects back to auctions', async ({ page }) => {
+    await page.goto('/subastas');
+
+    await page.getByRole('button', { name: /ingresar/i }).click();
+    await page.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
+
+    await expect(page.getByText(/documento/i)).toBeVisible();
+    await expect(page.getByText(/tel[eé]fono/i)).toBeVisible();
+    await expect(page.getByText(/nombre y apellido/i)).toBeVisible();
+  });
+
+  test('auction login includes account recovery flow', async ({ page }) => {
+    await page.goto('/subastas/panel');
+
+    await page.getByRole('button', { name: /^ingresar$/i }).click();
+    await page.getByRole('button', { name: /olvid[eé] mi contrase/i }).click();
+
+    await expect(page.getByRole('heading', { name: /recuperar cuenta/i })).toBeVisible();
+    await expect(page.getByText(/link seguro/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /recuperar cuenta/i })).toBeVisible();
   });
 
   test('catalog card opens detail with gallery and WhatsApp CTA', async ({ page }) => {

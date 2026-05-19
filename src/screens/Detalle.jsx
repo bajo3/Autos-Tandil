@@ -9,11 +9,13 @@ import { CarCard } from '../components/CarCard';
 import { FinanceCalc } from '../components/FinanceCalc';
 import { SectionHeader } from '../components/SectionHeader';
 import { ImageLightbox } from '../components/ImageLightbox';
+import { ProgressiveImage } from '../components/ProgressiveImage';
+import { VEHICLE_USE_LABELS } from '../lib/vehicleUse';
 import {
-  IconHeart, IconWhatsapp, IconBack,
+  IconHeart, IconWhatsapp, IconBack, IconChevron,
   IconGauge, IconCalendar, IconFuel, IconGear, IconCalc, IconLocation,
 } from '../components/Icons';
-import { trackCarView, trackWhatsappClick } from '../services/analyticsService';
+import { trackCarView, trackEvent, trackWhatsappClick } from '../services/analyticsService';
 
 export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
   const { id } = useParams();
@@ -46,6 +48,10 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
   const otherCars = cars.filter(c => c.type === car.type && c.id !== car.id).slice(0, 4);
   const currentPhotoBroken = brokenPhotos.has(photoIdx);
   const markPhotoBroken = (index) => setBrokenPhotos(current => new Set(current).add(index));
+  const goPhoto = (direction) => {
+    if (car.photoUrls.length < 2) return;
+    setPhotoIdx(current => (current + direction + car.photoUrls.length) % car.photoUrls.length);
+  };
 
   const Gallery = () => (
     <div style={{ background: 'var(--at-bg-2)', position: 'relative' }}>
@@ -80,6 +86,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
             return Math.max(0, current - 1);
           });
         }}
+        className="at-detail-gallery-main"
         style={{ aspectRatio: '4/3', overflow: 'hidden', border: 'none', padding: 0, width: '100%', background: 'transparent', cursor: 'zoom-in', display: 'block', touchAction: 'pan-y' }}
       >
         {currentPhotoBroken ? (
@@ -103,14 +110,37 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
             </div>
           </div>
         ) : (
-          <img
+          <ProgressiveImage
             src={car.photoUrls[photoIdx]}
             alt={`${car.brand} ${car.model}`}
+            loading="eager"
             onError={() => markPhotoBroken(photoIdx)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            style={{ width: '100%', height: '100%' }}
           />
         )}
       </button>
+
+      {car.photoUrls.length > 1 && (
+        <>
+          <button type="button" aria-label="Ver foto previa" onClick={() => goPhoto(-1)} className="at-gallery-arrow at-gallery-arrow-left">
+            <IconBack size={18} stroke="currentColor" sw={2.2} />
+          </button>
+          <button type="button" aria-label="Ver proxima foto" onClick={() => goPhoto(1)} className="at-gallery-arrow at-gallery-arrow-right">
+            <IconChevron size={18} stroke="currentColor" sw={2.2} />
+          </button>
+          <div className="at-gallery-dots">
+            {car.photoUrls.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Ir a foto ${i + 1}`}
+                onClick={() => setPhotoIdx(i)}
+                className={i === photoIdx ? 'active' : ''}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       <div style={{
         position: 'absolute',
@@ -130,21 +160,23 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
       </div>
 
       {car.photoUrls.length > 1 && (
-        <div style={{ display: 'flex', gap: 6, padding: '8px 14px', overflowX: 'auto' }} className="hide-scroll">
+        <div style={{ display: 'flex', gap: 8, padding: '10px 14px 12px', overflowX: 'auto', background: 'rgba(255,255,255,.72)', backdropFilter: 'blur(12px)' }} className="hide-scroll">
           {car.photoUrls.map((url, i) => (
             <button key={i} onClick={() => setPhotoIdx(i)}
               style={{
-                flex: '0 0 64px', height: 48, borderRadius: 8,
+                flex: i === photoIdx ? '0 0 76px' : '0 0 62px', height: i === photoIdx ? 54 : 46, borderRadius: 10,
                 overflow: 'hidden', border: '2px solid',
                 borderColor: i === photoIdx ? 'var(--at-accent)' : 'transparent',
                 padding: 0, cursor: 'pointer',
+                boxShadow: i === photoIdx ? '0 10px 22px rgba(0,68,255,.18)' : 'none',
+                transition: 'flex-basis .18s ease, height .18s ease, box-shadow .18s ease',
               }}>
               {brokenPhotos.has(i) ? (
                 <span style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', background: 'var(--at-bg-2)', color: 'var(--at-ink-3)', fontSize: 10, fontWeight: 800 }}>
                   Sin foto
                 </span>
               ) : (
-                <img src={url} alt="" onError={() => markPhotoBroken(i)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <ProgressiveImage src={url} alt="" loading="eager" onError={() => markPhotoBroken(i)} style={{ width: '100%', height: '100%' }} />
               )}
             </button>
           ))}
@@ -177,8 +209,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
             fontFamily: 'var(--at-display)', fontSize: 32, fontWeight: 600,
             letterSpacing: '-.025em', color: 'var(--at-ink)',
           }}>{fmtPrice(car.price)}</div>
-          {car.badges.includes('financia') && (
-            <button onClick={() => setShowCalc(true)} style={{
+          <button onClick={() => { trackEvent('finance_calc_opened', { source: 'detail', car }); setShowCalc(true); }} style={{
               width: '100%', marginTop: 12, padding: '13px 14px',
               borderRadius: 14,
               border: '2px solid var(--at-accent)',
@@ -199,12 +230,11 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
                   Ver opciones de financiación
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--at-ink-2)', marginTop: 2 }}>
-                  Elegí anticipo, compará cuotas y consultá fácil.
+                  Hasta 50% financiado. Elegí 6, 12, 18, 24 o 36 cuotas.
                 </div>
               </div>
               <span style={{ fontSize: 12, color: 'var(--at-accent)', fontWeight: 900, flexShrink: 0 }}>Ver cuotas</span>
-            </button>
-          )}
+          </button>
         </div>
       </div>
 
@@ -253,6 +283,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
             ['Combustible', car.fuel], ['Transmisión', car.trans],
             ['Motor', car.engine], ['Color', car.color],
             ['Tipo', car.type], ['Carrocería', car.body],
+            ['Uso ideal', (car.usageTags || []).map(use => VEHICLE_USE_LABELS[use] || use).join(', ') || 'A definir'],
           ].map(([k, v]) => (
             <div key={k} style={{
               display: 'flex', justifyContent: 'space-between',
@@ -279,8 +310,8 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
             background: '#fff', border: '1px solid var(--at-border)',
             display: 'grid', placeItems: 'center', flexShrink: 0, padding: 6,
           }}>
-            <img src="/logo-autostandil-mark.png" alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <ProgressiveImage src="/logo-autostandil-mark.png" alt=""
+              objectFit="contain" style={{ width: '100%', height: '100%', background: '#fff' }} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'var(--at-display)', fontWeight: 600, fontSize: 14, letterSpacing: '-.01em' }}>

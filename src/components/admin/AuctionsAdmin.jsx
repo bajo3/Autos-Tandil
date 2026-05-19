@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { fmtPrice } from '../../lib/utils';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { AUCTION_MIN_DEPOSIT, fmtPrice } from '../../lib/utils';
 import {
   listAllAuctions, createAuction, updateAuction, deleteAuction,
   listAuctionParticipants, setParticipantStatus, closeAuction,
@@ -61,7 +61,7 @@ function emptyAuction(cars) {
     starting_price: car ? Math.round(car.price * 0.7) : 1000000,
     min_increment: 100000,
     reserve_price: '',
-    deposit_amount: 100000,
+    deposit_amount: AUCTION_MIN_DEPOSIT,
     starts_at: toLocalInput(now),
     ends_at: toLocalInput(ends),
     anti_snipe_seconds: 120,
@@ -96,7 +96,7 @@ function AuctionForm({ initial, cars, onSave, onCancel }) {
         starting_price: Number(val.starting_price),
         min_increment: Number(val.min_increment),
         reserve_price: val.reserve_price === '' ? null : Number(val.reserve_price),
-        deposit_amount: Number(val.deposit_amount),
+        deposit_amount: Math.max(AUCTION_MIN_DEPOSIT, Number(val.deposit_amount)),
         anti_snipe_seconds: Number(val.anti_snipe_seconds),
         starts_at: new Date(val.starts_at).toISOString(),
         ends_at: new Date(val.ends_at).toISOString(),
@@ -131,7 +131,7 @@ function AuctionForm({ initial, cars, onSave, onCancel }) {
           <label style={lbl}>Reserva (opcional)<input style={field} type="number" value={val.reserve_price} onChange={(e) => set('reserve_price', e.target.value)} /></label>
         </div>
         <div className="grid md:grid-cols-3" style={{ display: 'grid', gap: 10 }}>
-          <label style={lbl}>Seña<input style={field} type="number" required value={val.deposit_amount} onChange={(e) => set('deposit_amount', e.target.value)} /></label>
+          <label style={lbl}>Seña<input style={field} type="number" min={AUCTION_MIN_DEPOSIT} required value={val.deposit_amount} onChange={(e) => set('deposit_amount', e.target.value)} /></label>
           <label style={lbl}>Anti-snipe (seg)<input style={field} type="number" required value={val.anti_snipe_seconds} onChange={(e) => set('anti_snipe_seconds', e.target.value)} /></label>
           <label style={lbl}>Estado
             <select style={field} value={val.status} onChange={(e) => set('status', e.target.value)}>
@@ -206,6 +206,8 @@ export function AuctionsAdmin({ cars }) {
   const [editing, setEditing] = useState(null); // null | 'new' | auction obj
   const [openParticipants, setOpenParticipants] = useState(null);
   const [msg, setMsg] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [q, setQ] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -240,6 +242,24 @@ export function AuctionsAdmin({ cars }) {
     catch (e) { setMsg(e?.message || String(e)); }
   };
 
+  const visibleAuctions = useMemo(() => {
+    const rank = { live: 0, scheduled: 1, draft: 2, ended: 3, cancelled: 4 };
+    const query = q.trim().toLowerCase();
+    return [...auctions]
+      .filter(auction => statusFilter === 'all' || auction.status === statusFilter)
+      .filter(auction => !query || `${auction.title} ${auction.description || ''}`.toLowerCase().includes(query))
+      .sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9)
+        || new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+  }, [auctions, q, statusFilter]);
+
+  const counts = useMemo(() => ({
+    all: auctions.length,
+    live: auctions.filter(a => a.status === 'live').length,
+    scheduled: auctions.filter(a => a.status === 'scheduled').length,
+    draft: auctions.filter(a => a.status === 'draft').length,
+    ended: auctions.filter(a => a.status === 'ended').length,
+  }), [auctions]);
+
   if (editing) {
     const initial = editing === 'new'
       ? emptyAuction(cars)
@@ -266,13 +286,41 @@ export function AuctionsAdmin({ cars }) {
 
       {msg && <div style={{ ...card, padding: 12, marginBottom: 12, fontSize: 13 }}>{msg}</div>}
 
+      <div style={{ ...card, padding: 12, marginBottom: 12, display: 'grid', gap: 10 }}>
+        <input
+          value={q}
+          onChange={event => setQ(event.target.value)}
+          placeholder="Buscar lote por titulo o descripcion"
+          style={field}
+        />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {[
+            ['all', `Todos (${counts.all})`],
+            ['live', `En vivo (${counts.live})`],
+            ['scheduled', `Programadas (${counts.scheduled})`],
+            ['draft', `Borradores (${counts.draft})`],
+            ['ended', `Cerradas (${counts.ended})`],
+          ].map(([value, label]) => (
+            <button key={value} type="button" onClick={() => setStatusFilter(value)} style={{
+              ...ghost,
+              background: statusFilter === value ? 'var(--at-ink)' : 'var(--at-bg-2)',
+              color: statusFilter === value ? '#fff' : 'var(--at-ink)',
+            }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {loading ? (
         <div style={{ color: 'var(--at-ink-2)' }}>Cargando subastas…</div>
       ) : auctions.length === 0 ? (
         <div style={{ ...card, padding: 24, color: 'var(--at-ink-2)' }}>Todavía no hay subastas. Creá la primera.</div>
+      ) : visibleAuctions.length === 0 ? (
+        <div style={{ ...card, padding: 24, color: 'var(--at-ink-2)' }}>No hay subastas con esos filtros.</div>
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
-          {auctions.map(a => (
+          {visibleAuctions.map(a => (
             <div key={a.id} style={{ ...card, padding: 14 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'start' }}>
                 <div>

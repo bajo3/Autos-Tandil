@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildWhatsapp } from '../lib/utils';
+import { saveSalesLead } from '../services/leadService';
+import { trackEvent } from '../services/analyticsService';
 import { AppHeader } from '../components/AppHeader';
 import { ATLogo } from '../components/ATLogo';
 import {
@@ -24,6 +27,32 @@ const benefits = [
 
 export default function Vender() {
   const navigate = useNavigate();
+  const [form, setForm] = useState({
+    full_name: '',
+    phone: '',
+    vehicle_brand: '',
+    vehicle_model: '',
+    vehicle_year: '',
+    vehicle_km: '',
+    notes: '',
+  });
+  const [status, setStatus] = useState('idle');
+  const [error, setError] = useState('');
+  const patch = (key, value) => setForm(current => ({ ...current, [key]: value }));
+
+  const submitLead = async (event) => {
+    event.preventDefault();
+    setStatus('saving');
+    setError('');
+    try {
+      await saveSalesLead({ ...form, lead_type: 'seller', source: 'sell_page' });
+      trackEvent('seller_lead_created', { source: 'sell_page', metadata: { brand: form.vehicle_brand, year: form.vehicle_year } });
+      setStatus('done');
+    } catch (e) {
+      setError(e?.message || 'No se pudo guardar la consulta.');
+      setStatus('idle');
+    }
+  };
 
   return (
     <div className="pb-[100px] md:pb-0">
@@ -131,6 +160,40 @@ export default function Vender() {
               </div>
             </section>
 
+            <section style={{ padding: '28px 0 8px' }}>
+              <h2 style={{
+                margin: '0 0 16px', fontFamily: 'var(--at-display)',
+                fontSize: 22, fontWeight: 500, letterSpacing: '-.025em', lineHeight: 1.1, color: 'var(--at-ink)',
+              }}>Pedí una evaluación</h2>
+              <form onSubmit={submitLead} style={{
+                background: 'var(--at-surface)', border: '1px solid var(--at-border)',
+                borderRadius: 14, padding: 16, display: 'grid', gap: 10,
+              }}>
+                <div className="grid md:grid-cols-2" style={{ gap: 10 }}>
+                  <label style={formLabel}>Nombre<input style={formInput} value={form.full_name} onChange={e => patch('full_name', e.target.value)} placeholder="Tu nombre" /></label>
+                  <label style={formLabel}>WhatsApp<input required style={formInput} value={form.phone} onChange={e => patch('phone', e.target.value)} placeholder="249..." /></label>
+                </div>
+                <div className="grid md:grid-cols-2" style={{ gap: 10 }}>
+                  <label style={formLabel}>Marca<input required style={formInput} value={form.vehicle_brand} onChange={e => patch('vehicle_brand', e.target.value)} placeholder="Toyota" /></label>
+                  <label style={formLabel}>Modelo<input required style={formInput} value={form.vehicle_model} onChange={e => patch('vehicle_model', e.target.value)} placeholder="Corolla" /></label>
+                </div>
+                <div className="grid md:grid-cols-2" style={{ gap: 10 }}>
+                  <label style={formLabel}>Año<input style={formInput} type="number" value={form.vehicle_year} onChange={e => patch('vehicle_year', e.target.value)} placeholder="2021" /></label>
+                  <label style={formLabel}>Km<input style={formInput} type="number" value={form.vehicle_km} onChange={e => patch('vehicle_km', e.target.value)} placeholder="60000" /></label>
+                </div>
+                <label style={formLabel}>Comentarios<textarea style={{ ...formInput, minHeight: 78, resize: 'vertical' }} value={form.notes} onChange={e => patch('notes', e.target.value)} placeholder="Estado, versión, detalles..." /></label>
+                {status === 'done' && <div style={{ color: '#166534', fontSize: 13, fontWeight: 800 }}>Listo. Quedó guardado y te contactamos para avanzar.</div>}
+                {error && <div style={{ color: '#991b1b', fontSize: 12 }}>{error}</div>}
+                <button disabled={status === 'saving'} style={{
+                  border: 'none', borderRadius: 999, padding: '13px 18px',
+                  background: 'var(--at-ink)', color: '#fff',
+                  fontWeight: 900, cursor: 'pointer', opacity: status === 'saving' ? .65 : 1,
+                }}>
+                  {status === 'saving' ? 'Enviando...' : 'Quiero que lo evalúen'}
+                </button>
+              </form>
+            </section>
+
             {/* QUÉ NECESITÁS */}
             <section style={{ padding: '28px 0 8px' }}>
               <h2 style={{
@@ -208,3 +271,24 @@ export default function Vender() {
     </div>
   );
 }
+
+const formInput = {
+  width: '100%',
+  border: '1px solid var(--at-border)',
+  background: 'var(--at-bg)',
+  color: 'var(--at-ink)',
+  borderRadius: 10,
+  padding: '11px 12px',
+  fontSize: 13,
+  outline: 'none',
+};
+
+const formLabel = {
+  display: 'grid',
+  gap: 6,
+  fontSize: 10,
+  color: 'var(--at-ink-3)',
+  fontFamily: 'var(--at-mono)',
+  letterSpacing: '.12em',
+  textTransform: 'uppercase',
+};

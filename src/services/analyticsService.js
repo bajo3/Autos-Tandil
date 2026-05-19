@@ -9,7 +9,9 @@ async function safeInsert(table, payload) {
   if (!hasSupabaseConfig || !supabase) return;
   try {
     const { error } = await supabase.from(table).insert(payload);
-    if (error) console.warn(`Analytics ${table}:`, error.message);
+    if (error && error.code !== 'PGRST205' && !String(error.message || '').includes('schema cache')) {
+      console.warn(`Analytics ${table}:`, error.message);
+    }
   } catch (error) {
     console.warn(`Analytics ${table}:`, error.message);
   }
@@ -53,6 +55,21 @@ export function trackWhatsappClick(car, source = 'unknown') {
   });
 }
 
+export function trackEvent(eventType, payload = {}) {
+  if (!eventType) return;
+  queueMicrotask(() => {
+    const car = payload.car || null;
+    safeInsert('site_events', {
+      event_type: eventType,
+      source: payload.source || null,
+      car_id: car?.id || payload.car_id || null,
+      slug: car?.id || payload.slug || null,
+      title: titleForCar(car) || payload.title || null,
+      metadata: payload.metadata || {},
+    });
+  });
+}
+
 const countBy = (rows, key) => rows.reduce((acc, row) => {
   const value = row[key] || 'sin-dato';
   acc[value] = (acc[value] || 0) + 1;
@@ -91,10 +108,16 @@ export async function getAdminAnalytics() {
       if (result.error) throw result.error;
     }
 
+    const eventsRes = await supabase
+      .from('site_events')
+      .select('event_type, source, slug, title, metadata, created_at')
+      .limit(1000);
+
     const pageViews = pageViewsRes.data || [];
     const recentPageViews = recentPageViewsRes.data || [];
     const carViews = carViewsRes.data || [];
     const whatsappClicks = whatsappRes.data || [];
+    const events = eventsRes.error ? [] : eventsRes.data || [];
     const carViewCounts = countBy(carViews, 'slug');
     const whatsappCounts = countBy(whatsappClicks, 'slug');
     const titleBySlug = [...carViews, ...whatsappClicks].reduce((acc, row) => {
@@ -123,6 +146,8 @@ export async function getAdminAnalytics() {
       topCars: topEntries(carViewCounts).map(item => ({ ...item, title: titleBySlug[item.key] || item.key })),
       topWhatsappCars: topEntries(whatsappCounts).map(item => ({ ...item, title: titleBySlug[item.key] || item.key })),
       topPages: topEntries(countBy(pageViews, 'path')),
+      topEvents: topEntries(countBy(events, 'event_type'), 10),
+      topEventSources: topEntries(countBy(events, 'source'), 10),
       ranking,
     };
   } catch (error) {

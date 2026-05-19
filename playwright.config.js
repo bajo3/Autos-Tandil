@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import 'dotenv/config';
 
-const port = process.env.PLAYWRIGHT_PORT || 5173;
+const port = Number(process.env.PLAYWRIGHT_PORT || 5176);
 const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
@@ -20,7 +21,7 @@ export default defineConfig({
   webServer: {
     command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`,
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
     env: {
       ...process.env,

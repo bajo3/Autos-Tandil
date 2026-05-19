@@ -38,7 +38,9 @@ export default async function handler(req, res) {
     }).select().single();
     if (payErr) return res.status(500).json({ error: 'DB_ERROR', detail: payErr.message });
 
-    const back = PUBLIC_BASE_URL || `https://${req.headers.host}`;
+    const proto = req.headers['x-forwarded-proto'] || (String(req.headers.host || '').startsWith('127.0.0.1') ? 'http' : 'https');
+    const back = PUBLIC_BASE_URL || `${proto}://${req.headers.host}`;
+    const webhookBase = PUBLIC_BASE_URL || back;
     const preference = {
       items: [{
         id: auction.id,
@@ -56,7 +58,7 @@ export default async function handler(req, res) {
         pending: `${back}/subastas?mp=pending`,
       },
       auto_return: 'approved',
-      notification_url: `${back}/api/mp/webhook`,
+      notification_url: `${webhookBase}/api/mp/webhook`,
     };
 
     const mpRes = await fetch('https://api.mercadopago.com/checkout/preferences', {

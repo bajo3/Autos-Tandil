@@ -7,7 +7,9 @@ import { CarCard, SkeletonCard } from '../components/CarCard';
 import { EmptyState } from '../components/EmptyState';
 import { FilterDrawer } from '../components/FilterDrawer';
 import { FilterSidebar } from '../components/FilterSidebar';
+import { SearchAlertForm } from '../components/SearchAlertForm';
 import { IconClose, IconFilter, IconSearch } from '../components/Icons';
+import { trackEvent } from '../services/analyticsService';
 
 const unique = (cars, key, fallback = []) => {
   const values = [...new Set(cars.map(car => car[key]).filter(Boolean))].sort();
@@ -96,6 +98,17 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false }
     setQ('');
   };
   const hasActiveFilters = activeChips.length > 0 || q.trim().length > 0;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!hasActiveFilters) return;
+      trackEvent('catalog_filters_changed', {
+        source: 'catalog',
+        metadata: { q, filters, sort, results: filtered.length },
+      });
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [filters, filtered.length, hasActiveFilters, q, sort]);
 
   return (
     <div className="pb-[88px] md:pb-0">
@@ -304,6 +317,9 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false }
                     desc="Probá ajustar los filtros o buscar con otro término."
                     cta={{ label: 'Limpiar filtros', onClick: clearAll }}
                   />
+                  <div style={{ marginTop: 14 }}>
+                    <SearchAlertForm filters={filters} query={q} source="catalog_empty" />
+                  </div>
                 </div>
               ) : (
                 filtered.map(car => (
@@ -317,6 +333,11 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false }
                 ))
               )}
             </div>
+            {!loading && !loadingCars && filtered.length > 0 && (
+              <div style={{ padding: '0 14px 28px' }}>
+                <SearchAlertForm filters={filters} query={q} source="catalog_bottom" />
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -284,6 +284,10 @@ CARS.forEach(car => {
   car.images = curatedImages || car.photos.map(p => photo(p));
   car.photoUrls = car.images;
   car.thumbUrl = car.images[0] || '/logo-autostandil.png';
+  car.usageTags = car.type === 'Camioneta' ? ['work', 'road']
+    : car.type === 'Utilitario' ? ['work', 'city']
+      : car.type === 'SUV' ? ['family', 'road', 'city']
+        : ['city', 'family'];
 });
 
 export const BRANDS = [...new Set(CARS.map(c => c.brand))].sort();

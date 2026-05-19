@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase, hasSupabaseConfig } from '../lib/supabase';
+import { getAuthRedirectTo } from '../lib/authRedirect';
 
 export function useAuth() {
   const [session, setSession] = useState(null);
@@ -39,8 +40,13 @@ export function useAuth() {
     if (error) throw error;
   }, []);
 
-  const signUp = useCallback(async (email, password) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+  const signUp = useCallback(async (email, password, redirectPath = '/subastas') => {
+    const emailRedirectTo = getAuthRedirectTo(redirectPath);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: emailRedirectTo ? { emailRedirectTo } : undefined,
+    });
     if (error) throw error;
   }, []);
 
