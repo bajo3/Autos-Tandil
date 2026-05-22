@@ -275,7 +275,7 @@ export function AuctionsAdmin({ cars }) {
   }
 
   return (
-    <section>
+    <section data-testid="admin-auctions">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ fontFamily: 'var(--at-mono)', fontSize: 11, color: 'var(--at-accent)', letterSpacing: '.14em', textTransform: 'uppercase' }}>Subastas</div>

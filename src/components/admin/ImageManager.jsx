@@ -6,6 +6,14 @@ import { ProgressiveImage } from '../ProgressiveImage';
 const urlPattern = /^https?:\/\/\S+\.\S+/i;
 const storageBucket = 'autos-images';
 
+// Detects if a URL belongs to the Supabase Storage bucket so it can be
+// cleaned up when the image is removed from the manager.
+const getStoragePath = (url) => {
+  const marker = `/object/public/${storageBucket}/`;
+  const idx = url.indexOf(marker);
+  return idx !== -1 ? decodeURIComponent(url.slice(idx + marker.length).split('?')[0]) : null;
+};
+
 const cleanImages = (items) => {
   const seen = new Set();
   return (items || [])
@@ -217,7 +225,16 @@ export function ImageManager({ images, onChange }) {
     if (addUrls(rows)) setBulkUrls('');
   };
 
-  const removeAt = (index) => {
+  const removeAt = async (index) => {
+    const url = cleanValue[index];
+    // If the image lives in Supabase Storage, delete it from the bucket too.
+    if (hasSupabaseConfig && supabase) {
+      const storagePath = getStoragePath(url);
+      if (storagePath) {
+        const { error: removeError } = await supabase.storage.from(storageBucket).remove([storagePath]);
+        if (removeError) console.warn('[ImageManager] Storage delete failed:', removeError.message);
+      }
+    }
     commit(cleanValue.filter((_, itemIndex) => itemIndex !== index));
   };
 
@@ -336,7 +353,7 @@ export function ImageManager({ images, onChange }) {
           />
         </label>
         <div style={{ fontSize: 12, color: 'var(--at-ink-2)', lineHeight: 1.45 }}>
-          Usa el bucket Supabase Storage <strong>{storageBucket}</strong>. Al quitar una foto aca solo se elimina del listado del auto, no del bucket.
+          Usa el bucket Supabase Storage <strong>{storageBucket}</strong>. Al quitar una foto subida desde aca tambien se elimina del bucket.
         </div>
         {!hasSupabaseConfig && (
           <div style={{ fontSize: 12, color: '#92400e', background: '#fef3c7', borderRadius: 8, padding: '8px 10px' }}>

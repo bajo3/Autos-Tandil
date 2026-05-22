@@ -87,4 +87,34 @@ test.describe('admin', () => {
     await expect(page.getByTestId('admin-analytics')).toBeVisible();
     await expect(page.getByText(/Analytics/i).first()).toBeVisible();
   });
+
+  test('admin leads route loads and shows CRM header', async ({ page }) => {
+    await loginAdmin(page);
+    await page.goto('/admin/leads');
+
+    await expect(page.getByTestId('admin-leads')).toBeVisible();
+    await expect(page.getByText(/CRM de oportunidades/i)).toBeVisible();
+    await expect(page.locator('body')).not.toContainText('Application error');
+  });
+
+  test('admin subastas route loads and shows auction panel', async ({ page }) => {
+    await loginAdmin(page);
+    await page.goto('/admin/subastas');
+
+    await expect(page.getByTestId('admin-auctions')).toBeVisible();
+    await expect(page.getByText(/Lotes activos/i)).toBeVisible();
+    await expect(page.locator('body')).not.toContainText('Application error');
+  });
+
+  test('admin login calls server-side auth endpoint', async ({ page }) => {
+    await page.goto('/admin/login');
+    await expect(page.getByTestId('admin-login-form')).toBeVisible();
+
+    // Attempt with wrong credentials — should stay on login form
+    await page.locator('input[name="user"]').fill('wrong');
+    await page.locator('input[name="password"]').fill('wrong');
+    await page.getByRole('button', { name: /entrar/i }).click();
+    await expect(page.getByTestId('admin-login-form')).toBeVisible();
+    await expect(page.getByText(/incorr/i)).toBeVisible();
+  });
 });

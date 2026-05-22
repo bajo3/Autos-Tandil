@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCars } from '../hooks/useCars';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { carToRow } from '../lib/carMapper';
-import { getAdminCredentials, isAdminSession, setAdminSession } from '../lib/adminAuth';
+import { validateAdminCredentials, isAdminSession, setAdminSession } from '../lib/adminAuth';
 import { fmtPrice, fmtKm } from '../lib/utils';
 import { VEHICLE_USE_LABELS, VEHICLE_USE_OPTIONS } from '../lib/vehicleUse';
 import { ImageManager } from '../components/admin/ImageManager';
@@ -99,8 +99,8 @@ function Login({ onLogin }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    const credentials = getAdminCredentials();
-    if (user !== credentials.user || password !== credentials.password) {
+    const ok = await validateAdminCredentials(user, password);
+    if (!ok) {
       setError('Usuario o clave incorrectos.');
       return;
     }
