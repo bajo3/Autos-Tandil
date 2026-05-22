@@ -8,7 +8,8 @@ import { EmptyState } from '../components/EmptyState';
 import { FilterDrawer } from '../components/FilterDrawer';
 import { FilterSidebar } from '../components/FilterSidebar';
 import { SearchAlertForm } from '../components/SearchAlertForm';
-import { IconClose, IconFilter, IconSearch } from '../components/Icons';
+import { SearchBar } from '../components/SearchBar';
+import { IconClose, IconFilter } from '../components/Icons';
 import { trackEvent } from '../services/analyticsService';
 
 const unique = (cars, key, fallback = []) => {
@@ -159,42 +160,13 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false }
 
       <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
         <div style={{ padding: '12px 14px 8px', background: 'var(--at-bg)', position: 'sticky', top: 0, zIndex: 12 }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            background: 'var(--at-surface)',
-            padding: '12px 14px',
-            borderRadius: 999,
-            border: '1px solid var(--at-border)',
-            boxShadow: '0 10px 24px rgba(15,23,42,.06)',
-          }}>
-            <IconSearch size={16} sw={1.8} stroke="var(--at-ink-2)" />
-            <input
-              value={q}
-              onChange={event => setQ(event.target.value)}
-              placeholder="Buscar marca, modelo o año"
-              style={{
-                flex: 1,
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                fontSize: 14,
-                color: 'var(--at-ink)',
-                fontFamily: 'inherit',
-              }}
-            />
-            {q && (
-              <button
-                type="button"
-                onClick={() => setQ('')}
-                aria-label="Limpiar búsqueda"
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}
-              >
-                <IconClose size={14} stroke="var(--at-ink-2)" />
-              </button>
-            )}
-          </div>
+          <SearchBar
+            value={q}
+            onChange={setQ}
+            cars={cars}
+            variant="surface"
+            placeholder="Buscar marca, modelo o año"
+          />
         </div>
 
         <div className="catalog-mobile-sort" style={{ padding: '7px 14px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>

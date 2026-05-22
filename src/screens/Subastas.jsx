@@ -245,6 +245,58 @@ function BidHistory({ bids, currentUserId }) {
   );
 }
 
+// ----------------------------- countdown -----------------------------
+function BigCountdown({ ms, status }) {
+  if (status !== 'live' && status !== 'scheduled') {
+    return (
+      <div style={{ display: 'grid', gap: 4, textAlign: 'center', padding: '14px 8px', borderRadius: 14, background: 'var(--at-bg-2)' }}>
+        <div style={{ fontSize: 11, color: 'var(--at-ink-3)', fontFamily: 'var(--at-mono)', letterSpacing: '.1em', textTransform: 'uppercase' }}>Estado</div>
+        <div style={{ fontFamily: 'var(--at-display)', fontSize: 28, fontWeight: 900, color: 'var(--at-ink)' }}>{statusLabel(status)}</div>
+      </div>
+    );
+  }
+  const urgent = ms < 60_000;
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const days = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  const parts = days > 0
+    ? [{ v: days, l: 'd' }, { v: pad(h), l: 'h' }, { v: pad(m), l: 'm' }]
+    : [{ v: pad(h), l: 'h' }, { v: pad(m), l: 'm' }, { v: pad(s), l: 's' }];
+
+  return (
+    <div style={{
+      display: 'grid', gap: 8, textAlign: 'center',
+      padding: '14px 10px', borderRadius: 14,
+      background: urgent ? 'linear-gradient(180deg, #fef3c7, #fde68a)' : 'linear-gradient(180deg, var(--at-bg-2), var(--at-surface))',
+      border: urgent ? '1px solid #f59e0b' : '1px solid var(--at-border)',
+      animation: urgent ? 'at-urgent-pulse 1.4s ease-in-out infinite' : 'none',
+    }}>
+      <div style={{ fontSize: 10, color: urgent ? '#92400e' : 'var(--at-ink-3)', fontFamily: 'var(--at-mono)', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 800 }}>
+        {status === 'scheduled' ? 'Arranca en' : urgent ? '¡Últimos segundos!' : 'Cierre en'}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, fontVariantNumeric: 'tabular-nums' }}>
+        {parts.map(part => (
+          <div key={part.l} style={{ display: 'grid', placeItems: 'center', gap: 1 }}>
+            <span style={{
+              fontFamily: 'var(--at-display)',
+              fontSize: 'clamp(26px, 5vw, 36px)', fontWeight: 900,
+              lineHeight: 1, color: urgent ? '#92400e' : 'var(--at-ink)',
+              letterSpacing: '-.04em',
+            }}>{part.v}</span>
+            <span style={{
+              fontSize: 9, fontFamily: 'var(--at-mono)', color: urgent ? '#92400e' : 'var(--at-ink-3)',
+              letterSpacing: '.14em', textTransform: 'uppercase', fontWeight: 700,
+            }}>{part.l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ----------------------------- bidding panel -----------------------------
 function BiddingPanel({
   auction, status, user, profile, participation, bids, ms, now,
@@ -254,14 +306,31 @@ function BiddingPanel({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [okMsg, setOkMsg] = useState('');
+  const [flashCurrent, setFlashCurrent] = useState(false);
+  const prevCurrentRef = useRef(auction.current_bid);
 
   useEffect(() => {
     Promise.resolve().then(() => { setBid(nextMin(auction)); setErr(''); setOkMsg(''); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auction.id, auction.current_bid, auction.min_increment, auction.starting_price]);
 
+  // Flash animation when the current bid changes (someone else outbid us)
+  useEffect(() => {
+    if (prevCurrentRef.current != null && prevCurrentRef.current !== auction.current_bid) {
+      setFlashCurrent(true);
+      const t = setTimeout(() => setFlashCurrent(false), 1100);
+      return () => clearTimeout(t);
+    }
+    prevCurrentRef.current = auction.current_bid;
+  }, [auction.current_bid]);
+
   const inc = Number(auction.min_increment) || 0;
   const min = nextMin(auction);
+  // Did the current user have the leading bid and got outbid?
+  const myLastBid = bids?.find(b => b.user_id === user?.id);
+  const topBid = bids?.[0];
+  const wasLeading = myLastBid && topBid && topBid.user_id !== user?.id
+    && Number(myLastBid.amount) < Number(topBid.amount);
 
   const handleBid = async (event) => {
     event.preventDefault();
@@ -396,52 +465,129 @@ function BiddingPanel({
     );
   }
 
+  // Quick-bid chip values: +1 increment, +3 increments, +5 increments
+  const quickChips = [
+    { label: 'Mín', value: min },
+    { label: `+${fmtShort(inc)}`, value: min + inc },
+    { label: `+${fmtShort(inc * 3)}`, value: min + inc * 3 },
+  ];
+  const stepDown = () => setBid(b => Math.max(min, b - inc));
+  const stepUp   = () => setBid(b => b + inc);
+
+  // Am I currently the top bidder?
+  const isLeading = topBid && user && topBid.user_id === user.id;
+
   return (
     <aside style={panelStyle}>
       {heading}
-      <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--at-ink-2)', lineHeight: 1.5 }}>
-        Estás habilitado. Tus ofertas se registran al instante y son visibles para los demás participantes.
-      </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
-        <Stat label="Oferta actual" value={auction.current_bid != null ? fmtPrice(Number(auction.current_bid)) : '—'} />
-        <Stat label="Cierra en" value={formatCountdown(ms)} highlight={ms < 60_000} />
+      {wasLeading && (
+        <Banner tone="warn">
+          ⚠️ Te superaron. La oferta actual es <strong>{fmtPrice(Number(auction.current_bid))}</strong>. Subí tu puja para volver a liderar.
+        </Banner>
+      )}
+      {isLeading && !wasLeading && (
+        <Banner tone="ok">
+          ✓ Sos el mejor postor con {fmtPrice(Number(topBid.amount))}. Defendé tu oferta hasta el cierre.
+        </Banner>
+      )}
+
+      <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{
+          background: flashCurrent ? 'linear-gradient(180deg, #dcfce7, #bbf7d0)' : 'var(--at-bg-2)',
+          border: flashCurrent ? '1px solid #16a34a' : '1px solid transparent',
+          borderRadius: 12, padding: 12,
+          transition: 'background .35s ease, border-color .35s ease',
+        }}>
+          <div style={{ ...panelLabel, marginBottom: 4 }}>Oferta actual</div>
+          <div style={{
+            fontFamily: 'var(--at-display)', fontSize: 22, fontWeight: 900,
+            color: flashCurrent ? '#166534' : 'var(--at-ink)', fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '-.02em', lineHeight: 1,
+          }}>
+            {auction.current_bid != null ? fmtPrice(Number(auction.current_bid)) : '—'}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--at-ink-3)' }}>
+            {auction.bid_count || bids.length || 0} pujas · siguiente {fmtPrice(min)}
+          </div>
+        </div>
+        <BigCountdown ms={ms} status={status} />
       </div>
 
       <form onSubmit={handleBid}>
-        <label style={{ display: 'block', marginTop: 16 }}>
+        <div style={{ marginTop: 16 }}>
           <span style={panelLabel}>Tu oferta (mínimo {fmtPrice(min)})</span>
-          <input type="text" inputMode="numeric" value={fmtPrice(bid)}
-            onChange={(e) => setBid(parseMoney(e.target.value, min))}
-            style={{
-              width: '100%', border: '1px solid var(--at-border)', borderRadius: 14,
-              padding: '14px', fontSize: 20, fontWeight: 900, color: 'var(--at-ink)',
-              outline: 'none', background: 'var(--at-bg)', boxSizing: 'border-box',
-            }} />
-        </label>
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-          {[1, 2, 3].map(mult => (
-            <button key={mult} type="button" onClick={() => setBid(min + inc * (mult - 1))}
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: 0,
+            border: '1px solid var(--at-border)', borderRadius: 14, background: 'var(--at-bg)',
+            overflow: 'hidden',
+          }}>
+            <button type="button" onClick={stepDown} aria-label="Restar incremento" disabled={bid <= min}
               style={{
-                flex: 1, border: '1px solid var(--at-border)', background: 'var(--at-bg-2)',
-                borderRadius: 999, padding: '9px 8px', fontSize: 11, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit',
-              }}>
-              {mult === 1 ? `Mín` : `+${fmtShort(inc * (mult - 1))}`}
-            </button>
-          ))}
+                border: 'none', background: 'transparent', cursor: bid > min ? 'pointer' : 'not-allowed',
+                padding: '14px 16px', fontSize: 22, fontWeight: 900, color: bid > min ? 'var(--at-ink)' : 'var(--at-ink-3)',
+                fontFamily: 'inherit',
+              }}>−</button>
+            <input type="text" inputMode="numeric" value={fmtPrice(bid)}
+              onChange={(e) => setBid(parseMoney(e.target.value, min))}
+              style={{
+                width: '100%', border: 'none', textAlign: 'center',
+                padding: '14px 4px', fontSize: 22, fontWeight: 900, color: 'var(--at-ink)',
+                outline: 'none', background: 'transparent', boxSizing: 'border-box',
+                fontVariantNumeric: 'tabular-nums', letterSpacing: '-.01em',
+              }} />
+            <button type="button" onClick={stepUp} aria-label="Sumar incremento"
+              style={{
+                border: 'none', background: 'transparent', cursor: 'pointer',
+                padding: '14px 16px', fontSize: 22, fontWeight: 900, color: 'var(--at-ink)',
+                fontFamily: 'inherit',
+              }}>+</button>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 10 }}>
+          {quickChips.map(chip => {
+            const active = bid === chip.value;
+            return (
+              <button key={chip.label} type="button" onClick={() => setBid(chip.value)}
+                style={{
+                  border: '1px solid ' + (active ? 'var(--at-ink)' : 'var(--at-border)'),
+                  background: active ? 'var(--at-ink)' : 'var(--at-bg-2)',
+                  color: active ? '#fff' : 'var(--at-ink)',
+                  borderRadius: 999, padding: '9px 8px',
+                  fontSize: 11, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all .15s ease',
+                }}>
+                {chip.label}
+              </button>
+            );
+          })}
         </div>
 
         {err && <Banner tone="err">{err}</Banner>}
         {okMsg && <Banner tone="ok">{okMsg}</Banner>}
 
         <button type="submit" disabled={busy || ms <= 0}
-          style={{ ...primaryBtn, opacity: (busy || ms <= 0) ? .55 : 1, marginTop: 14 }}>
-          <IconGavel size={16} sw={2} />{busy ? 'Enviando…' : 'Confirmar oferta'}
+          style={{
+            ...primaryBtn,
+            background: ms <= 0 ? 'var(--at-ink-2)' : 'linear-gradient(180deg, var(--at-ink) 0%, #0f172a 100%)',
+            opacity: (busy || ms <= 0) ? .55 : 1, marginTop: 14,
+            boxShadow: '0 14px 30px rgba(15,23,42,.22)',
+          }}>
+          <IconGavel size={16} sw={2} />{busy ? 'Enviando…' : `Ofertar ${fmtPrice(bid)}`}
         </button>
       </form>
 
-      <div style={{ marginTop: 16 }}>
-        <div style={{ ...panelLabel, marginBottom: 0 }}>Historial</div>
+      <div style={{ marginTop: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <span style={{ ...panelLabel, marginBottom: 0 }}>Historial en vivo</span>
+          {status === 'live' && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: '#16a34a', fontFamily: 'var(--at-mono)', fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase' }}>
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: '#16a34a', animation: 'at-pulse 1.6s infinite' }} />
+              En vivo
+            </span>
+          )}
+        </div>
         <BidHistory bids={bids} currentUserId={user.id} />
       </div>
     </aside>
@@ -953,7 +1099,13 @@ export default function Subastas({ cars = MOCK_CARS }) {
         </div>
       </div>
 
-      <style>{`@keyframes at-pulse { 0%,100% { opacity: .9; transform: scale(1) } 50% { opacity: .35; transform: scale(.7) } }`}</style>
+      <style>{`
+        @keyframes at-pulse { 0%,100% { opacity: .9; transform: scale(1) } 50% { opacity: .35; transform: scale(.7) } }
+        @keyframes at-urgent-pulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,.5); }
+          50% { box-shadow: 0 0 0 8px rgba(245,158,11,0); }
+        }
+      `}</style>
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
     </div>
   );

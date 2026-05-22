@@ -8,10 +8,11 @@ import { SectionHeader } from '../components/SectionHeader';
 import { ProgressiveImage } from '../components/ProgressiveImage';
 import { BuyerAssistant } from '../components/BuyerAssistant';
 import { SearchAlertForm } from '../components/SearchAlertForm';
+import { SearchBar } from '../components/SearchBar';
 import { listPublicAuctions } from '../services/auctionService';
 import { trackEvent } from '../services/analyticsService';
 import {
-  IconSearch, IconCar, IconCheck, IconWhatsapp, IconChevron,
+  IconCar, IconCheck, IconWhatsapp, IconChevron,
   IconLocation, IconShield, IconHandshake,
 } from '../components/Icons';
 
@@ -215,44 +216,17 @@ export default function Home({ favs, onFav, recents, cars = MOCK_CARS, soldCars 
                 Una agencia automotor con stock seleccionado. Encontrá tu próximo auto o vendé el tuyo por consignación, todo gestionado por AutosTandil.
               </p>
 
-              <form
-                onSubmit={event => {
-                  event.preventDefault();
-                  navigate('/catalogo', { state: heroSearch.trim() ? { q: heroSearch.trim() } : {} });
-                }}
-                style={{
-                  marginTop: 22,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  background: '#fff',
-                  color: 'var(--at-ink)',
-                  padding: '13px 16px',
-                  borderRadius: 999,
-                  boxShadow: '0 12px 30px -10px rgba(0,0,0,.35)',
-                }}
-              >
-                <IconSearch size={18} sw={1.8} stroke="var(--at-ink-2)" />
-                <input
+              <div style={{ marginTop: 22 }}>
+                <SearchBar
                   value={heroSearch}
-                  onChange={event => setHeroSearch(event.target.value)}
+                  onChange={setHeroSearch}
+                  onSubmit={(text) => navigate('/catalogo', { state: text ? { q: text } : {} })}
+                  cars={cars}
+                  variant="light"
+                  showSubmit
                   placeholder="Buscar marca, modelo o año"
-                  style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, color: 'var(--at-ink)', minWidth: 0 }}
                 />
-                <button type="submit" style={{
-                  padding: '5px 12px',
-                  borderRadius: 999,
-                  background: 'var(--at-accent)',
-                  color: '#fff',
-                  fontSize: 11.5,
-                  fontWeight: 800,
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}>
-                  Buscar
-                </button>
-              </form>
+              </div>
 
               <div style={{ marginTop: 22, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderTop: '1px solid rgba(255,255,255,.16)', paddingTop: 16 }}>
                 {[
