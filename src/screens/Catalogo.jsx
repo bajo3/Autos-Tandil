@@ -92,6 +92,7 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false }
   if (filters.maxPrice) activeChips.push({ key: 'maxPrice', label: `Hasta ${fmtShort(filters.maxPrice)}` });
   if (filters.minPrice) activeChips.push({ key: 'minPrice', label: `Desde ${fmtShort(filters.minPrice)}` });
   if (filters.minYear) activeChips.push({ key: 'minYear', label: `Desde ${filters.minYear}` });
+  if (filters.maxYear) activeChips.push({ key: 'maxYear', label: `Hasta ${filters.maxYear}` });
 
   const clearChip = key => setFilters(current => ({ ...current, [key]: null }));
   const clearAll = () => {

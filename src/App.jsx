@@ -56,7 +56,9 @@ export default function App() {
   const { pathname } = useLocation();
   const showNav = NAV_ROUTES.includes(pathname);
   const availableCars = useMemo(() => inventory.cars.filter(car => !['sold', 'reserved', 'draft'].includes(car.status)), [inventory.cars]);
-  const publicCars = availableCars.length ? availableCars : inventory.cars;
+  // Nunca mostrar autos vendidos/reservados/borrador como disponibles,
+  // aunque el inventario esté vacío.
+  const publicCars = availableCars;
   const soldCars = useMemo(() => inventory.cars.filter(car => ['sold', 'reserved'].includes(car.status)), [inventory.cars]);
 
   // Show splash only once per browser session

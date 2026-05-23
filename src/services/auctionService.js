@@ -84,6 +84,7 @@ export async function requestParticipation(auctionId, userId) {
 }
 
 export async function placeBid(auctionId, amount) {
+  if (!hasSupabaseConfig) throw new Error('Supabase no configurado');
   const { data, error } = await supabase.rpc('place_bid', { p_auction_id: auctionId, p_amount: amount });
   if (error) throw error;
   return data;

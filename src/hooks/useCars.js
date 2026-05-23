@@ -9,11 +9,13 @@ export function useCars({ includeDrafts = false, includeSold = false } = {}) {
   const [source, setSource] = useState(hasSupabaseConfig ? 'supabase' : 'mock');
   const [error, setError] = useState(null);
 
-  const loadCars = useCallback(async () => {
+  const loadCars = useCallback(async (signal) => {
     if (!hasSupabaseConfig) {
-      setRemoteCars([]);
-      setSource('mock');
-      setLoading(false);
+      if (!signal?.aborted) {
+        setRemoteCars([]);
+        setSource('mock');
+        setLoading(false);
+      }
       return;
     }
 
@@ -27,6 +29,9 @@ export function useCars({ includeDrafts = false, includeSold = false } = {}) {
     else if (!includeDrafts) query = query.eq('status', 'published');
 
     const { data, error: queryError } = await query;
+
+    // No actualizar estado si el componente ya se desmontó
+    if (signal?.aborted) return;
 
     if (queryError) {
       console.warn('Supabase autos fallback:', queryError.message);
@@ -43,7 +48,9 @@ export function useCars({ includeDrafts = false, includeSold = false } = {}) {
   }, [includeDrafts, includeSold]);
 
   useEffect(() => {
-    Promise.resolve().then(loadCars);
+    const controller = new AbortController();
+    Promise.resolve().then(() => loadCars(controller.signal));
+    return () => controller.abort();
   }, [loadCars]);
 
   const cars = useMemo(() => {

@@ -56,8 +56,10 @@ export function useAuth() {
 
   const updateProfile = useCallback(async (patch) => {
     if (!session?.user) throw new Error('NOT_AUTHENTICATED');
+    // upsert en vez de update: crea la fila si el usuario no tiene perfil todavía
     const { data, error } = await supabase.from('profiles')
-      .update(patch).eq('user_id', session.user.id).select().single();
+      .upsert({ user_id: session.user.id, ...patch }, { onConflict: 'user_id' })
+      .select().single();
     if (error) throw error;
     setProfile(data);
     return data;

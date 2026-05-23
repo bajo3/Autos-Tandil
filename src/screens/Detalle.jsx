@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/static-components */
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CARS as MOCK_CARS } from '../data/cars';
@@ -17,43 +16,22 @@ import {
 } from '../components/Icons';
 import { trackCarView, trackEvent, trackWhatsappClick } from '../services/analyticsService';
 
-export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const car = cars.find(c => c.id === id);
-  const [photoIdx, setPhotoIdx] = useState(0);
-  const [showCalc, setShowCalc] = useState(false);
-  const [lightboxIdx, setLightboxIdx] = useState(null);
-  const [touchStart, setTouchStart] = useState(null);
-  const [brokenPhotos, setBrokenPhotos] = useState(() => new Set());
-
-  useEffect(() => {
-    if (car) trackCarView(car);
-  }, [car]);
-
-  if (!car) {
-    return (
-      <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--at-display)', color: 'var(--at-ink-2)' }}>
-        Auto no encontrado
-        <br />
-        <button onClick={() => navigate('/catalogo')}
-          style={{ marginTop: 16, padding: '10px 20px', borderRadius: 999, background: 'var(--at-ink)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
-          Ver catálogo
-        </button>
-      </div>
-    );
-  }
-
-  const isFav = favs.includes(car.id);
-  const otherCars = cars.filter(c => c.type === car.type && c.id !== car.id).slice(0, 4);
+// ── Gallery ──────────────────────────────────────────────────────────────────
+// Definida a nivel de módulo para evitar que React la desmonte en cada render.
+function Gallery({
+  car, photoIdx, setPhotoIdx,
+  brokenPhotos, markPhotoBroken,
+  touchStart, setTouchStart,
+  onOpenLightbox, isFav, onFav, navigate,
+}) {
   const currentPhotoBroken = brokenPhotos.has(photoIdx);
-  const markPhotoBroken = (index) => setBrokenPhotos(current => new Set(current).add(index));
-  const goPhoto = (direction) => {
+
+  const goPhoto = (dir) => {
     if (car.photoUrls.length < 2) return;
-    setPhotoIdx(current => (current + direction + car.photoUrls.length) % car.photoUrls.length);
+    setPhotoIdx(cur => (cur + dir + car.photoUrls.length) % car.photoUrls.length);
   };
 
-  const Gallery = () => (
+  return (
     <div style={{ background: 'var(--at-bg-2)', position: 'relative' }}>
       {/* floating controls */}
       <div style={{
@@ -74,16 +52,16 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
       <button
         type="button"
         data-testid="detail-main-image"
-        onClick={() => setLightboxIdx(photoIdx)}
-        onTouchStart={event => setTouchStart(event.touches[0].clientX)}
-        onTouchEnd={event => {
+        onClick={() => onOpenLightbox(photoIdx)}
+        onTouchStart={e => setTouchStart(e.touches[0].clientX)}
+        onTouchEnd={e => {
           if (touchStart === null) return;
-          const delta = event.changedTouches[0].clientX - touchStart;
+          const delta = e.changedTouches[0].clientX - touchStart;
           setTouchStart(null);
           if (Math.abs(delta) < 42) return;
-          setPhotoIdx(current => {
-            if (delta < 0) return Math.min(car.photoUrls.length - 1, current + 1);
-            return Math.max(0, current - 1);
+          setPhotoIdx(cur => {
+            if (delta < 0) return Math.min(car.photoUrls.length - 1, cur + 1);
+            return Math.max(0, cur - 1);
           });
         }}
         className="at-detail-gallery-main"
@@ -91,14 +69,9 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
       >
         {currentPhotoBroken ? (
           <div style={{
-            width: '100%',
-            height: '100%',
-            display: 'grid',
-            placeItems: 'center',
+            width: '100%', height: '100%', display: 'grid', placeItems: 'center',
             background: 'linear-gradient(135deg, var(--at-bg-2), var(--at-surface))',
-            color: 'var(--at-ink-2)',
-            padding: 24,
-            textAlign: 'center',
+            color: 'var(--at-ink-2)', padding: 24, textAlign: 'center',
           }}>
             <div>
               <div style={{ fontFamily: 'var(--at-display)', fontSize: 28, fontWeight: 800, color: 'var(--at-ink)', letterSpacing: '-.02em' }}>
@@ -162,7 +135,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
       {car.photoUrls.length > 1 && (
         <div style={{ display: 'flex', gap: 8, padding: '10px 14px 12px', overflowX: 'auto', background: 'rgba(255,255,255,.72)', backdropFilter: 'blur(12px)' }} className="hide-scroll">
           {car.photoUrls.map((url, i) => (
-            <button key={i} onClick={() => setPhotoIdx(i)}
+            <button key={i} type="button" onClick={() => setPhotoIdx(i)}
               style={{
                 flex: i === photoIdx ? '0 0 76px' : '0 0 62px', height: i === photoIdx ? 54 : 46, borderRadius: 10,
                 overflow: 'hidden', border: '2px solid',
@@ -184,8 +157,12 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
       )}
     </div>
   );
+}
 
-  const InfoPanel = ({ desktop = false }) => (
+// ── InfoPanel ─────────────────────────────────────────────────────────────────
+// Definida a nivel de módulo para evitar desmontaje en cada render de Detalle.
+function InfoPanel({ car, isFav, onFav, onOpenCalc, navigate, desktop = false }) {
+  return (
     <div>
       {/* badges + meta */}
       <div style={{ padding: desktop ? '0 0 4px' : '20px 20px 4px' }}>
@@ -209,7 +186,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
             fontFamily: 'var(--at-display)', fontSize: 32, fontWeight: 600,
             letterSpacing: '-.025em', color: 'var(--at-ink)',
           }}>{fmtPrice(car.price)}</div>
-          <button onClick={() => { trackEvent('finance_calc_opened', { source: 'detail', car }); setShowCalc(true); }} style={{
+          <button onClick={onOpenCalc} style={{
               width: '100%', marginTop: 12, padding: '13px 14px',
               borderRadius: 14,
               border: '2px solid var(--at-accent)',
@@ -349,14 +326,60 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
       )}
     </div>
   );
+}
+
+// ── Detalle ───────────────────────────────────────────────────────────────────
+export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const car = cars.find(c => c.id === id);
+  const [photoIdx, setPhotoIdx] = useState(0);
+  const [showCalc, setShowCalc] = useState(false);
+  const [lightboxIdx, setLightboxIdx] = useState(null);
+  const [touchStart, setTouchStart] = useState(null);
+  const [brokenPhotos, setBrokenPhotos] = useState(() => new Set());
+
+  useEffect(() => {
+    if (car) trackCarView(car);
+  }, [car]);
+
+  if (!car) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--at-display)', color: 'var(--at-ink-2)' }}>
+        Auto no encontrado
+        <br />
+        <button onClick={() => navigate('/catalogo')}
+          style={{ marginTop: 16, padding: '10px 20px', borderRadius: 999, background: 'var(--at-ink)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+          Ver catálogo
+        </button>
+      </div>
+    );
+  }
+
+  const isFav = favs.includes(car.id);
+  const otherCars = cars.filter(c => c.type === car.type && c.id !== car.id).slice(0, 4);
+  const markPhotoBroken = (index) => setBrokenPhotos(current => new Set(current).add(index));
+
+  const galleryProps = {
+    car, photoIdx, setPhotoIdx,
+    brokenPhotos, markPhotoBroken,
+    touchStart, setTouchStart,
+    onOpenLightbox: setLightboxIdx,
+    isFav, onFav, navigate,
+  };
+
+  const infoPanelProps = {
+    car, isFav, onFav, navigate,
+    onOpenCalc: () => { trackEvent('finance_calc_opened', { source: 'detail', car }); setShowCalc(true); },
+  };
 
   return (
     <div className="pb-[110px] lg:pb-0" style={{ background: 'var(--at-bg)' }}>
 
       {/* ── MOBILE layout (single column) ── */}
       <div className="lg:hidden">
-        <Gallery />
-        <InfoPanel />
+        <Gallery {...galleryProps} />
+        <InfoPanel {...infoPanelProps} />
 
         {/* Similar cars */}
         {otherCars.length > 0 && (
@@ -427,7 +450,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
           {/* Left: gallery + similar */}
           <div style={{ flex: '0 0 56%', minWidth: 0 }}>
             <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid var(--at-border)' }}>
-              <Gallery />
+              <Gallery {...galleryProps} />
             </div>
 
             {/* Similar cars */}
@@ -446,7 +469,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
 
           {/* Right: info panel (sticky) */}
           <div style={{ flex: 1, minWidth: 0, position: 'sticky', top: 80 }}>
-            <InfoPanel desktop />
+            <InfoPanel {...infoPanelProps} desktop />
           </div>
         </div>
       </div>
