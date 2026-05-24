@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BADGE_LABELS } from '../data/cars';
 import { fmtShort } from '../lib/utils';
+import { useSEO } from '../hooks/useSEO';
 import { AppHeader, hdrBtn } from '../components/AppHeader';
 import { CarCard, SkeletonCard } from '../components/CarCard';
 import { EmptyState } from '../components/EmptyState';
@@ -27,9 +28,11 @@ const emptyFilters = {
   maxPrice: null,
   minYear: null,
   maxYear: null,
+  maxKm: null,
 };
 
 export default function Catalogo({ favs, onFav, cars = [], loadingCars = false }) {
+  useSEO({ title: 'Catálogo', description: 'Explorá el stock de autos disponibles en AutosTandil. Filtrá por marca, precio, kilómetros y más.' });
   const navigate = useNavigate();
   const { state } = useLocation();
   const initialFilters = useMemo(() => {
@@ -71,6 +74,7 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false }
       if (filters.maxPrice && car.price > filters.maxPrice) return false;
       if (filters.minYear && car.year < filters.minYear) return false;
       if (filters.maxYear && car.year > filters.maxYear) return false;
+      if (filters.maxKm && car.km > filters.maxKm) return false;
       return true;
     });
 
@@ -93,6 +97,7 @@ export default function Catalogo({ favs, onFav, cars = [], loadingCars = false }
   if (filters.minPrice) activeChips.push({ key: 'minPrice', label: `Desde ${fmtShort(filters.minPrice)}` });
   if (filters.minYear) activeChips.push({ key: 'minYear', label: `Desde ${filters.minYear}` });
   if (filters.maxYear) activeChips.push({ key: 'maxYear', label: `Hasta ${filters.maxYear}` });
+  if (filters.maxKm) activeChips.push({ key: 'maxKm', label: `Hasta ${filters.maxKm >= 1000 ? `${filters.maxKm / 1000}k` : filters.maxKm} km` });
 
   const clearChip = key => setFilters(current => ({ ...current, [key]: null }));
   const clearAll = () => {

@@ -1,6 +1,6 @@
 import { Badge } from './Badge';
-import { IconHeart, IconGauge, IconFuel, IconGear, IconChevron, IconCalc } from './Icons';
-import { estimateMonthlyPayment, fmtPrice, fmtKm } from '../lib/utils';
+import { IconHeart, IconGauge, IconFuel, IconGear, IconChevron, IconCalc, IconWhatsapp } from './Icons';
+import { estimateMonthlyPayment, fmtPrice, fmtKm, buildWhatsapp } from '../lib/utils';
 import { ProgressiveImage } from './ProgressiveImage';
 
 const specStyle = {
@@ -180,7 +180,7 @@ export function CarCard({ car, onOpen, onFav, isFav, radius = 14 }) {
               letterSpacing: '-.015em',
               fontFamily: 'var(--at-display)',
             }}>
-              {fmtPrice(car.price)}
+              {fmtPrice(car.price, car.currency)}
             </div>
           </div>
           <span style={{
@@ -213,23 +213,25 @@ export function CarCard({ car, onOpen, onFav, isFav, radius = 14 }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 10,
+          gap: 8,
           fontSize: 11,
           color: 'var(--at-ink-2)',
         }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-            <span style={{
-              width: 6,
-              height: 6,
-              borderRadius: 999,
-              background: '#22c55e',
-              flexShrink: 0,
-              boxShadow: '0 0 0 3px rgba(34,197,94,.15)',
-            }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              Disponible en Tandil
-            </span>
-          </span>
+          <a
+            href={buildWhatsapp(car)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '6px 10px', borderRadius: 8,
+              background: '#25D366', color: '#fff',
+              fontSize: 11, fontWeight: 700,
+              textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
+            }}
+          >
+            <IconWhatsapp size={13} fill="#fff" />Consultar
+          </a>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: 'var(--at-accent)', fontWeight: 800, whiteSpace: 'nowrap' }}>
             Ver detalle <IconChevron size={12} sw={2.4} />
           </span>

@@ -1,6 +1,9 @@
 export const WA_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '5492494621182';
 
-export const fmtPrice = (n) => '$ ' + n.toLocaleString('es-AR');
+export const fmtPrice = (n, currency = 'ARS') => {
+  const num = Number(n) || 0;
+  return (currency === 'USD' ? 'USD ' : '$ ') + num.toLocaleString('es-AR');
+};
 export const fmtKm = (n) => n.toLocaleString('es-AR') + ' km';
 export const fmtShort = (n) => {
   if (n >= 1e6) return '$ ' + (n / 1e6).toFixed(1).replace('.0', '') + 'M';

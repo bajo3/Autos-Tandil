@@ -12,9 +12,10 @@ import { ProgressiveImage } from '../components/ProgressiveImage';
 import { VEHICLE_USE_LABELS } from '../lib/vehicleUse';
 import {
   IconHeart, IconWhatsapp, IconBack, IconChevron,
-  IconGauge, IconCalendar, IconFuel, IconGear, IconCalc, IconLocation,
+  IconGauge, IconCalendar, IconFuel, IconGear, IconCalc, IconLocation, IconShare,
 } from '../components/Icons';
 import { trackCarView, trackEvent, trackWhatsappClick } from '../services/analyticsService';
+import { useSEO } from '../hooks/useSEO';
 
 // ── Gallery ──────────────────────────────────────────────────────────────────
 // Definida a nivel de módulo para evitar que React la desmonte en cada render.
@@ -32,7 +33,7 @@ function Gallery({
   };
 
   return (
-    <div style={{ background: 'var(--at-bg-2)', position: 'relative' }}>
+    <div style={{ background: '#111', position: 'relative' }}>
       {/* floating controls */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
@@ -87,8 +88,9 @@ function Gallery({
             src={car.photoUrls[photoIdx]}
             alt={`${car.brand} ${car.model}`}
             loading="eager"
+            objectFit="contain"
             onError={() => markPhotoBroken(photoIdx)}
-            style={{ width: '100%', height: '100%' }}
+            style={{ width: '100%', height: '100%', background: '#111' }}
           />
         )}
       </button>
@@ -185,7 +187,7 @@ function InfoPanel({ car, isFav, onFav, onOpenCalc, navigate, desktop = false })
           <div style={{
             fontFamily: 'var(--at-display)', fontSize: 32, fontWeight: 600,
             letterSpacing: '-.025em', color: 'var(--at-ink)',
-          }}>{fmtPrice(car.price)}</div>
+          }}>{fmtPrice(car.price, car.currency)}</div>
           <button onClick={onOpenCalc} style={{
               width: '100%', marginTop: 12, padding: '13px 14px',
               borderRadius: 14,
@@ -311,6 +313,17 @@ function InfoPanel({ car, isFav, onFav, onOpenCalc, navigate, desktop = false })
           }}>
             <IconHeart size={20} sw={1.8} filled={isFav} stroke={isFav ? '#e11d48' : 'var(--at-ink)'} />
           </button>
+          {typeof navigator !== 'undefined' && navigator.share && (
+            <button onClick={() => navigator.share({ title: `${car.brand} ${car.model} ${car.year}`, url: window.location.href })}
+              aria-label="Compartir"
+              style={{
+                width: 52, height: 52, borderRadius: 12,
+                background: 'var(--at-bg-2)', border: '1px solid var(--at-border)',
+                display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0,
+              }}>
+              <IconShare size={18} stroke="var(--at-ink)" />
+            </button>
+          )}
           <a data-testid="whatsapp-cta" href={buildWhatsapp(car)} onClick={() => trackWhatsappClick(car, 'detail_desktop')} target="_blank" rel="noopener noreferrer"
             style={{
               flex: 1, height: 52, borderRadius: 12,
@@ -338,6 +351,12 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
   const [lightboxIdx, setLightboxIdx] = useState(null);
   const [touchStart, setTouchStart] = useState(null);
   const [brokenPhotos, setBrokenPhotos] = useState(() => new Set());
+
+  useSEO({
+    title: car ? `${car.brand} ${car.model} ${car.year}` : 'Auto',
+    description: car ? `${car.brand} ${car.model} ${car.version} (${car.year}) — ${car.km?.toLocaleString('es-AR')} km. Disponible en AutosTandil, Tandil.` : undefined,
+    image: car?.photoUrls?.[0],
+  });
 
   useEffect(() => {
     if (car) trackCarView(car);
@@ -402,7 +421,7 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
         <div style={{
           position: 'fixed', left: 0, right: 0, bottom: 0,
           padding: '12px 14px calc(env(safe-area-inset-bottom, 0px) + 12px)',
-          background: 'rgba(255,255,255,.92)',
+          background: 'rgba(var(--at-bg-rgb, 250,250,247),.92)',
           backdropFilter: 'blur(20px) saturate(160%)',
           WebkitBackdropFilter: 'blur(20px) saturate(160%)',
           borderTop: '1px solid var(--at-border)',
@@ -415,6 +434,17 @@ export default function Detalle({ favs, onFav, cars = MOCK_CARS }) {
           }}>
             <IconHeart size={20} sw={1.8} filled={isFav} stroke={isFav ? '#e11d48' : 'var(--at-ink)'} />
           </button>
+          {typeof navigator !== 'undefined' && navigator.share && (
+            <button onClick={() => navigator.share({ title: `${car.brand} ${car.model} ${car.year}`, url: window.location.href })}
+              aria-label="Compartir"
+              style={{
+                width: 48, height: 48, borderRadius: 12,
+                background: 'var(--at-bg-2)', border: '1px solid var(--at-border)',
+                display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0,
+              }}>
+              <IconShare size={18} stroke="var(--at-ink)" />
+            </button>
+          )}
           <a data-testid="whatsapp-cta" href={buildWhatsapp(car)} onClick={() => trackWhatsappClick(car, 'detail_mobile')} target="_blank" rel="noopener noreferrer"
             style={{
               flex: 1, height: 48, borderRadius: 12,

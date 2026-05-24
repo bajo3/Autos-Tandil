@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { ATLogo } from './ATLogo';
-import { IconWhatsapp, IconHeart } from './Icons';
+import { IconWhatsapp, IconHeart, IconMoon, IconSun } from './Icons';
 import { buildWhatsapp } from '../lib/utils';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 const navItems = [
   { to: '/', label: 'Inicio', end: true },
@@ -11,12 +12,13 @@ const navItems = [
 
 export function DesktopNav({ favCount = 0 }) {
   const navigate = useNavigate();
+  const { dark, toggle } = useDarkMode();
 
   return (
     <div className="hidden md:block">
       <header style={{
         position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(250,250,247,.95)',
+        background: 'color-mix(in srgb, var(--at-bg) 95%, transparent)',
         backdropFilter: 'blur(20px) saturate(160%)',
         WebkitBackdropFilter: 'blur(20px) saturate(160%)',
         borderBottom: '1px solid var(--at-border)',
@@ -48,6 +50,15 @@ export function DesktopNav({ favCount = 0 }) {
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={toggle} aria-label={dark ? 'Modo claro' : 'Modo oscuro'}
+              style={{
+                width: 36, height: 36, borderRadius: 8,
+                background: 'var(--at-bg-2)', border: '1px solid var(--at-border)',
+                display: 'grid', placeItems: 'center', cursor: 'pointer',
+              }}>
+              {dark ? <IconSun size={16} sw={1.8} stroke="var(--at-ink-2)" /> : <IconMoon size={16} sw={1.8} stroke="var(--at-ink-2)" />}
+            </button>
+
             <button onClick={() => navigate('/favoritos')}
               style={{
                 position: 'relative', width: 36, height: 36, borderRadius: 8,

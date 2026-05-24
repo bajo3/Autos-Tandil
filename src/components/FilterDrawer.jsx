@@ -95,6 +95,12 @@ export function FilterDrawer({ onClose, filters, setFilters, options }) {
               <Pill key={y} active={local.minYear === y} onClick={() => set('minYear', y)}>{y}</Pill>
             ))}
           </FilterGroup>
+          <FilterGroup label="Kilómetros máximos">
+            {[30000, 50000, 80000, 100000, 150000].map(km => (
+              <Pill key={km} active={local.maxKm === km}
+                onClick={() => set('maxKm', km)}>{km >= 1000 ? `${km / 1000}k km` : `${km} km`}</Pill>
+            ))}
+          </FilterGroup>
           <FilterGroup label="Otros">
             <Pill active={local.badge === 'financia'} onClick={() => set('badge', 'financia')}>Financiación</Pill>
             <Pill active={local.badge === 'permuta'} onClick={() => set('badge', 'permuta')}>Permuta</Pill>

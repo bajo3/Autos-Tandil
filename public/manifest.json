@@ -1,0 +1,30 @@
+{
+  "name": "AutosTandil",
+  "short_name": "AutosTandil",
+  "description": "Compra, venta y consignación de autos en Tandil",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafaf7",
+  "theme_color": "#0f172a",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/logo-autostandil-mark.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Catálogo",
+      "url": "/catalogo",
+      "description": "Ver todos los autos disponibles"
+    },
+    {
+      "name": "Favoritos",
+      "url": "/favoritos",
+      "description": "Mis autos favoritos"
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import Home from './screens/Home';
 import Catalogo from './screens/Catalogo';
 import Detalle from './screens/Detalle';
 import Favoritos from './screens/Favoritos';
+import NotFound from './components/NotFound';
 import { trackEvent, trackPageView } from './services/analyticsService';
 
 const Vender = lazy(() => import('./screens/Vender'));
@@ -99,7 +100,7 @@ export default function App() {
           <Route path="/admin/subastas" element={<Admin />} />
           <Route path="/admin/analytics" element={<Admin />} />
           <Route path="/admin/leads" element={<Admin />} />
-          <Route path="*" element={<Home favs={favs} onFav={handleFavorite} recents={recents} cars={publicCars} soldCars={soldCars} />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
       {showNav && <BottomNav favCount={favs.length} />}

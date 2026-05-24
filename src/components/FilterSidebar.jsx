@@ -79,6 +79,12 @@ export function FilterSidebar({ filters, setFilters, options }) {
           <Pill key={y} active={filters.minYear === y} onClick={() => set('minYear', y)}>{y}</Pill>
         ))}
       </FilterGroup>
+      <FilterGroup label="Kilómetros máx.">
+        {[30000, 50000, 80000, 100000, 150000].map(km => (
+          <Pill key={km} active={filters.maxKm === km}
+            onClick={() => set('maxKm', km)}>{km >= 1000 ? `${km / 1000}k` : km}</Pill>
+        ))}
+      </FilterGroup>
       <FilterGroup label="Otros">
         <Pill active={filters.badge === 'financia'} onClick={() => set('badge', 'financia')}>Financiación</Pill>
         <Pill active={filters.badge === 'permuta'} onClick={() => set('badge', 'permuta')}>Permuta</Pill>
