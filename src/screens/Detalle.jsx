@@ -66,7 +66,7 @@ function Gallery({
           });
         }}
         className="at-detail-gallery-main"
-        style={{ aspectRatio: '4/3', overflow: 'hidden', border: 'none', padding: 0, width: '100%', background: 'transparent', cursor: 'zoom-in', display: 'block', touchAction: 'pan-y' }}
+        style={{ border: 'none', padding: 0, width: '100%', background: '#111', cursor: 'zoom-in', display: 'block', touchAction: 'pan-y' }}
       >
         {currentPhotoBroken ? (
           <div style={{

@@ -224,11 +224,17 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 18px 42px rgba(0,0,0,.18) !important;
 }
 
+.at-detail-gallery-main {
+  aspect-ratio: 16 / 9;
+  max-height: 70vh;
+  min-height: 220px;
+  overflow: hidden;
+}
+
 @media (max-width: 1023px) {
   .at-detail-gallery-main {
-    aspect-ratio: 16 / 9 !important;
-    max-height: 70vh;
-    min-height: 220px;
+    max-height: 60vh;
+    min-height: 200px;
   }
 
   .at-touch-carousel {

@@ -1,91 +1,95 @@
 import { useEffect, useRef, useState } from 'react';
-import { ProgressiveImage } from './ProgressiveImage';
-
-const btn = {
-  border: 'none',
-  borderRadius: 10,
-  padding: '9px 12px',
-  background: 'rgba(255,255,255,.92)',
-  color: '#0f172a',
-  fontSize: 12,
-  fontWeight: 800,
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-};
+import { IconClose, IconBack, IconChevron } from './Icons';
 
 export function ImageLightbox({ images, index, onClose, onIndex }) {
   const [zoom, setZoom] = useState(1);
   const [touchStart, setTouchStart] = useState(null);
-  const [isMobileViewer, setIsMobileViewer] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const gestureRef = useRef(null);
   const safeImages = images || [];
   const url = safeImages[index];
   const canPrev = index > 0;
   const canNext = index < safeImages.length - 1;
 
+  // Detect mobile / coarse pointer
   useEffect(() => {
     const query = window.matchMedia('(max-width: 760px), (pointer: coarse)');
-    const sync = () => setIsMobileViewer(query.matches);
+    const sync = () => setIsMobile(query.matches);
     sync();
     query.addEventListener('change', sync);
     return () => query.removeEventListener('change', sync);
   }, []);
 
-  const clampZoom = (value) => Math.min(4, Math.max(1, Number(value.toFixed(2))));
+  // Lock body scroll while open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const clampZoom = (v) => Math.min(4, Math.max(1, Number(v.toFixed(2))));
 
   const getTouchDistance = (touches) => {
-    const [first, second] = touches;
-    if (!first || !second) return 0;
-    return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
+    const [a, b] = touches;
+    if (!a || !b) return 0;
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
   };
 
-  const go = (direction) => {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= safeImages.length) return;
+  const go = (dir) => {
+    const next = index + dir;
+    if (next < 0 || next >= safeImages.length) return;
     setZoom(1);
-    onIndex(nextIndex);
+    onIndex(next);
   };
 
-  const onTouchStart = (event) => {
-    if (event.touches.length >= 2) {
-      gestureRef.current = {
-        type: 'pinch',
-        distance: getTouchDistance(event.touches),
-        zoom,
-      };
+  const onTouchStart = (e) => {
+    if (e.touches.length >= 2) {
+      gestureRef.current = { type: 'pinch', distance: getTouchDistance(e.touches), zoom };
       setTouchStart(null);
       return;
     }
-
     gestureRef.current = { type: 'swipe' };
-    setTouchStart(event.touches[0].clientX);
+    setTouchStart(e.touches[0].clientX);
   };
 
-  const onTouchMove = (event) => {
-    if (event.touches.length < 2 || gestureRef.current?.type !== 'pinch') return;
-    event.preventDefault();
-    const nextDistance = getTouchDistance(event.touches);
-    if (!gestureRef.current.distance || !nextDistance) return;
-    const scale = nextDistance / gestureRef.current.distance;
-    setZoom(clampZoom(gestureRef.current.zoom * scale));
+  const onTouchMove = (e) => {
+    if (e.touches.length < 2 || gestureRef.current?.type !== 'pinch') return;
+    e.preventDefault();
+    const d = getTouchDistance(e.touches);
+    if (!gestureRef.current.distance || !d) return;
+    setZoom(clampZoom(gestureRef.current.zoom * (d / gestureRef.current.distance)));
   };
 
-  const onTouchEnd = (event) => {
+  const onTouchEnd = (e) => {
     if (gestureRef.current?.type === 'pinch') {
-      if (event.touches.length < 2) gestureRef.current = null;
+      if (e.touches.length < 2) gestureRef.current = null;
       return;
     }
-
     if (touchStart === null) return;
-    const delta = event.changedTouches[0].clientX - touchStart;
+    const delta = e.changedTouches[0].clientX - touchStart;
     setTouchStart(null);
     gestureRef.current = null;
-    if (Math.abs(delta) < 42) return;
-    if (zoom > 1.05) return;
+    if (Math.abs(delta) < 42 || zoom > 1.05) return;
     go(delta < 0 ? 1 : -1);
   };
 
   if (!url) return null;
+
+  const arrowBtn = {
+    position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+    width: 44, height: 44, borderRadius: 999,
+    background: 'rgba(255,255,255,.14)', border: '1px solid rgba(255,255,255,.22)',
+    color: '#fff', display: 'grid', placeItems: 'center', cursor: 'pointer',
+    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+    zIndex: 4, transition: 'background .15s',
+  };
 
   return (
     <div
@@ -93,72 +97,145 @@ export function ImageLightbox({ images, index, onClose, onIndex }) {
       role="dialog"
       aria-modal="true"
       style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 200,
-        background: 'rgba(2,6,23,.94)',
-        display: 'grid',
-        gridTemplateRows: 'auto 1fr auto',
-        padding: 14,
-        color: '#fff',
+        position: 'fixed', inset: 0, zIndex: 200,
+        display: 'flex', flexDirection: 'column',
+        background: '#000',
+        // Animate in
+        animation: 'fadeInBg .18s ease forwards',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-        <div style={{ fontFamily: 'var(--at-mono)', fontSize: 12, letterSpacing: '.08em' }}>
+      {/* ── Blurred backdrop image ── */}
+      <img
+        src={url}
+        aria-hidden="true"
+        key={`blur-${url}`}
+        style={{
+          position: 'absolute', inset: 0,
+          width: '100%', height: '100%',
+          objectFit: 'cover',
+          filter: 'blur(36px) brightness(0.22) saturate(0.5)',
+          transform: 'scale(1.14)',
+          pointerEvents: 'none', userSelect: 'none',
+        }}
+      />
+
+      {/* ── Top bar ── */}
+      <div style={{
+        position: 'relative', zIndex: 3,
+        padding: 'calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: 'linear-gradient(to bottom, rgba(0,0,0,.55) 0%, transparent 100%)',
+        pointerEvents: 'none',
+      }}>
+        <span style={{
+          color: 'rgba(255,255,255,.72)', fontFamily: 'var(--at-mono)',
+          fontSize: 12, letterSpacing: '.06em', pointerEvents: 'none',
+        }}>
           {index + 1} / {safeImages.length}
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <button type="button" style={btn} onClick={() => setZoom(z => clampZoom(z - .25))}>- Zoom</button>
-          <button type="button" style={btn} onClick={() => setZoom(1)}>100%</button>
-          <button type="button" style={btn} onClick={() => setZoom(z => clampZoom(z + .25))}>+ Zoom</button>
-          <button type="button" style={btn} onClick={onClose}>Cerrar</button>
-        </div>
+        </span>
+
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          style={{
+            width: 38, height: 38, borderRadius: 999,
+            background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.2)',
+            color: '#fff', display: 'grid', placeItems: 'center',
+            cursor: 'pointer', pointerEvents: 'auto',
+            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+          }}
+        >
+          <IconClose size={16} sw={2.2} stroke="#fff" />
+        </button>
       </div>
 
+      {/* ── Main image ── */}
       <div
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        style={{ position: 'relative', minHeight: 0, display: 'grid', placeItems: 'center', overflow: 'auto', touchAction: 'none' }}
+        style={{
+          flex: 1, position: 'relative', zIndex: 2,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          minHeight: 0, overflow: 'hidden',
+          padding: isMobile ? '0 12px' : '0 60px',
+          touchAction: 'none',
+        }}
       >
-        {!isMobileViewer && (
-          <button type="button" onClick={() => go(-1)} disabled={!canPrev} style={{ ...btn, position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', opacity: canPrev ? 1 : .35, zIndex: 2 }}>
-            Anterior
-          </button>
-        )}
-        <ProgressiveImage
+        <img
+          key={url}
           src={url}
           alt=""
-          loading="eager"
-          objectFit="contain"
           style={{
-            width: `${zoom * 100}%`,
-            height: `${zoom * 100}%`,
-            maxWidth: zoom === 1 ? '100%' : 'none',
-            maxHeight: zoom === 1 ? '100%' : 'none',
-            borderRadius: 12,
-            boxShadow: '0 24px 80px rgba(0,0,0,.45)',
-            transition: 'width .16s ease, height .16s ease',
+            maxWidth: '100%',
+            maxHeight: '100%',
+            objectFit: 'contain',
+            borderRadius: 10,
+            boxShadow: '0 32px 80px rgba(0,0,0,.6)',
             userSelect: 'none',
             WebkitUserSelect: 'none',
             WebkitTouchCallout: 'none',
+            transform: `scale(${zoom})`,
+            transformOrigin: 'center center',
+            transition: zoom === 1 ? 'transform .2s ease' : 'none',
+            display: 'block',
           }}
-          imgStyle={{ objectFit: 'contain' }}
         />
-        {!isMobileViewer && (
-          <button type="button" onClick={() => go(1)} disabled={!canNext} style={{ ...btn, position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', opacity: canNext ? 1 : .35, zIndex: 2 }}>
-            Siguiente
-          </button>
+
+        {/* Desktop arrows */}
+        {!isMobile && (
+          <>
+            <button type="button" onClick={() => go(-1)} disabled={!canPrev}
+              style={{ ...arrowBtn, left: 14, opacity: canPrev ? 1 : .25 }}>
+              <IconBack size={18} stroke="#fff" sw={2.2} />
+            </button>
+            <button type="button" onClick={() => go(1)} disabled={!canNext}
+              style={{ ...arrowBtn, right: 14, opacity: canNext ? 1 : .25 }}>
+              <IconChevron size={18} stroke="#fff" sw={2.2} />
+            </button>
+          </>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingTop: 10 }}>
-        {safeImages.map((item, itemIndex) => (
-          <button key={`${item}-${itemIndex}`} type="button" onClick={() => { setZoom(1); onIndex(itemIndex); }} style={{ flex: '0 0 72px', height: 54, borderRadius: 8, overflow: 'hidden', border: '2px solid ' + (itemIndex === index ? '#fff' : 'transparent'), padding: 0, background: 'rgba(255,255,255,.12)' }}>
-            <ProgressiveImage src={item} alt="" style={{ width: '100%', height: '100%' }} />
-          </button>
-        ))}
-      </div>
+      {/* ── Thumbnail strip ── */}
+      {safeImages.length > 1 && (
+        <div style={{
+          position: 'relative', zIndex: 3,
+          background: 'linear-gradient(to top, rgba(0,0,0,.65) 0%, transparent 100%)',
+          padding: 'calc(env(safe-area-inset-bottom, 0px) + 14px) 16px calc(env(safe-area-inset-bottom, 0px) + 16px)',
+        }}>
+          <div style={{
+            display: 'flex', gap: 6, overflowX: 'auto', justifyContent: 'center',
+            scrollbarWidth: 'none',
+          }}
+            className="hide-scroll"
+          >
+            {safeImages.map((item, i) => (
+              <button
+                key={`${item}-${i}`}
+                type="button"
+                onClick={() => { setZoom(1); onIndex(i); }}
+                style={{
+                  flex: '0 0 52px', height: 38,
+                  borderRadius: 6, overflow: 'hidden',
+                  border: '2px solid ' + (i === index ? '#fff' : 'rgba(255,255,255,.25)'),
+                  padding: 0, cursor: 'pointer',
+                  opacity: i === index ? 1 : 0.5,
+                  transition: 'opacity .15s, border-color .15s',
+                  background: 'rgba(255,255,255,.08)',
+                }}
+              >
+                <img
+                  src={item}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
