@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
-import { DarkModeProvider } from './hooks/useDarkMode.js'
+import { DarkModeProvider } from './hooks/useDarkMode.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

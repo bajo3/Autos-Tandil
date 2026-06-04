@@ -11,7 +11,7 @@ import Home from './screens/Home';
 import Catalogo from './screens/Catalogo';
 import Detalle from './screens/Detalle';
 import Favoritos from './screens/Favoritos';
-import NotFound from './components/NotFound';
+import { NotFound } from './components/NotFound';
 import { trackEvent, trackPageView } from './services/analyticsService';
 
 const Vender = lazy(() => import('./screens/Vender'));
