@@ -15,15 +15,21 @@ const budgetOptions = [
 ];
 
 const pill = (active) => ({
-  border: `1px solid ${active ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.2)'}`,
+  border: `1px solid ${active ? '#fff' : 'rgba(255,255,255,.2)'}`,
   background: active ? '#fff' : 'rgba(255,255,255,.08)',
-  color: active ? 'var(--at-ink)' : '#f8fafc',
+  // Color fijo en estado activo: var(--at-ink) se volvía casi blanco en modo
+  // oscuro → texto ilegible sobre el fondo blanco de la pill.
+  color: active ? '#0f172a' : '#f1f5f9',
   borderRadius: 999,
-  padding: '9px 12px',
+  padding: '11px 12px',
   cursor: 'pointer',
-  fontSize: 12,
-  fontWeight: 900,
-  boxShadow: active ? '0 12px 30px rgba(0,0,0,.18)' : 'none',
+  fontSize: 12.5,
+  fontWeight: 800,
+  textAlign: 'center',
+  width: '100%',
+  whiteSpace: 'nowrap',
+  transition: 'background .15s ease, color .15s ease, border-color .15s ease',
+  boxShadow: active ? '0 10px 24px rgba(0,0,0,.20)' : 'none',
 });
 
 function scoreCar(car, answers) {
@@ -103,7 +109,7 @@ export function BuyerAssistant({ cars = [], favs = [], onFav, source = 'home' })
           <div style={{ display: 'grid', gap: 13, marginTop: 18 }}>
             <div>
               <div style={stepLabel}>Presupuesto</div>
-              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
                 {budgetOptions.map(option => (
                   <button key={option.value} type="button" onClick={() => patch('budget', option.value)} style={pill(answers.budget === option.value)}>
                     {option.label}
@@ -113,7 +119,7 @@ export function BuyerAssistant({ cars = [], favs = [], onFav, source = 'home' })
             </div>
             <div>
               <div style={stepLabel}>Uso principal</div>
-              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
                 {useOptions.map(option => (
                   <button key={option.id} type="button" onClick={() => patch('use', option.id)} style={pill(answers.use === option.id)}>
                     {option.label}
@@ -123,7 +129,7 @@ export function BuyerAssistant({ cars = [], favs = [], onFav, source = 'home' })
             </div>
             <div>
               <div style={stepLabel}>Caja</div>
-              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
                 {[
                   ['any', 'Cualquiera'],
                   ['Automática', 'Automática'],
@@ -220,7 +226,7 @@ const assistantBtn = {
   borderRadius: 10,
   padding: '11px 14px',
   background: '#fff',
-  color: 'var(--at-ink)',
+  color: '#0f172a',
   fontWeight: 900,
   cursor: 'pointer',
 };
