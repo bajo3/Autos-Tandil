@@ -12,7 +12,7 @@ const overlay = {
 };
 
 const shell = {
-  width: '100%', maxWidth: 880, display: 'grid', gridTemplateColumns: '1fr',
+  width: '100%', maxWidth: 880, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)',
   background: 'var(--at-surface)', border: '1px solid var(--at-border)',
   borderRadius: 24, overflow: 'hidden',
   boxShadow: '0 40px 120px rgba(8,12,24,.45)',
@@ -71,7 +71,7 @@ const linkBtn = {
 };
 
 const tabsWrap = {
-  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4,
+  display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 4,
   padding: 4, background: 'var(--at-bg-2)', borderRadius: 12, marginBottom: 20,
 };
 
@@ -374,7 +374,7 @@ export function AuthModal({ open, onClose, mode: initialMode = 'signin' }) {
                     value={fullName} onChange={(e) => setFullName(e.target.value)} />
                 </Field>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 10, marginBottom: 14 }}>
                 <div>
                   <span style={label}>Documento</span>
                   <Field icon={<IdIcon />}>
@@ -474,7 +474,7 @@ export function AuthModal({ open, onClose, mode: initialMode = 'signin' }) {
         }
         @keyframes at-spin { to { transform: rotate(360deg) } }
         @media (min-width: 720px) {
-          .at-auth-shell { grid-template-columns: minmax(280px, 360px) 1fr !important; max-width: 880px !important; }
+          .at-auth-shell { grid-template-columns: minmax(280px, 360px) minmax(0, 1fr) !important; max-width: 880px !important; }
           .at-auth-brand { display: block !important; }
         }
       `}</style>

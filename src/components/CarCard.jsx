@@ -56,7 +56,7 @@ export function CarCard({ car, onOpen, onFav, isFav, radius = 14 }) {
         event.currentTarget.style.borderColor = 'var(--at-border)';
       }}
     >
-      <div style={{ position: 'relative', aspectRatio: '4/3', overflow: 'hidden', background: 'var(--at-bg-2)' }}>
+      <div className="at-card-media" style={{ position: 'relative', overflow: 'hidden', background: 'var(--at-bg-2)' }}>
         <ProgressiveImage
           src={car.thumbUrl}
           alt={`${car.brand} ${car.model}`}
@@ -249,7 +249,7 @@ export function SkeletonCard({ radius = 14 }) {
       border: '1px solid var(--at-border)',
       overflow: 'hidden',
     }}>
-      <div className="skel" style={{ aspectRatio: '4/3' }} />
+      <div className="skel at-card-media" />
       <div style={{ padding: 14 }}>
         <div className="skel" style={{ width: '60%', height: 14, borderRadius: 4 }} />
         <div className="skel" style={{ width: '85%', height: 10, borderRadius: 4, marginTop: 6 }} />
